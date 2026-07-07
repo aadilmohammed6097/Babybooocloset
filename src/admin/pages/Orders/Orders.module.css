@@ -201,6 +201,12 @@
   background: #fcfaf7;
 }
 
+.table th:last-child,
+.table td:last-child {
+  width: 100%;
+  text-align: right;
+}
+
 .table tbody tr td:last-child {
   position: sticky;
   right: 0;
@@ -217,9 +223,8 @@
 .actionsCell {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 8px;
-  min-width: 120px;
   white-space: nowrap;
 }
 
