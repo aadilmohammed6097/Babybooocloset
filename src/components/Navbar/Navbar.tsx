@@ -88,6 +88,7 @@ const Navbar = () => {
               to="/login"
               className={styles.actionBtn}
               onClick={() => setMobileOpen(false)}
+              aria-label="Profile"
             >
               <User size={20} />
             </Link>

@@ -31,13 +31,6 @@
   margin-bottom: 32px;
 }
 
-.devHint {
-  display: block;
-  font-size: 0.75rem;
-  color: #a67c52;
-  margin-top: 4px;
-}
-
 .form {
   display: flex;
   flex-direction: column;
@@ -78,4 +71,12 @@
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.homeLink {
+  display: block;
+  margin-top: 14px;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: #a67c52;
 }

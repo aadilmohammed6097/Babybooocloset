@@ -75,6 +75,18 @@
   color: var(--color-text-secondary);
 }
 
+.adminOption {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.adminOption a {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
 .switch button {
   background: none;
   color: var(--color-primary);

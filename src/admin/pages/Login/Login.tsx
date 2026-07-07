@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { isDevAuthEnabled } from "../../services/authService";
 import styles from "./Login.module.css";
@@ -35,12 +35,7 @@ const AdminLogin = () => {
     <div className={styles.page}>
       <div className={styles.card}>
         <h1 className={styles.logo}>Babybooocloset Admin</h1>
-        <p className={styles.subtitle}>
-          Sign in to manage your store
-          {isDevAuthEnabled() && (
-            <span className={styles.devHint}> (dev credentials from .env)</span>
-          )}
-        </p>
+        <p className={styles.subtitle}>Sign in to manage your store</p>
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <input
@@ -72,6 +67,10 @@ const AdminLogin = () => {
             {submitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        <Link to="/" className={styles.homeLink}>
+          Go to Home
+        </Link>
       </div>
     </div>
   );

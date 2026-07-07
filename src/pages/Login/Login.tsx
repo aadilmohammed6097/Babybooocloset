@@ -73,6 +73,12 @@ const Login = () => {
           </Button>
         </form>
 
+        {isLogin && (
+          <p className={styles.adminOption}>
+            <Link to="/admin/login">Login as admin</Link>
+          </p>
+        )}
+
         <p className={styles.switch}>
           {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
           <button onClick={() => setIsLogin(!isLogin)}>
