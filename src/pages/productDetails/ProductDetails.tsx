@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Heart } from "lucide-react";
 import {
   getProductById,
@@ -9,6 +9,7 @@ import type { Product } from "../../types";
 import { formatPrice } from "../../utils/formatPrice";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
+import { useAuth } from "../../context/AuthContext";
 import ProductCard from "../../components/ProductCard/productCard";
 import ProductImageGallery from "../../components/ProductImageGallery/ProductImageGallery";
 import Button from "../../components/Button/Button";
@@ -18,8 +19,10 @@ import styles from "./ProductDetails.module.css";
 
 const ProductDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
+  const { user } = useAuth();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
@@ -78,6 +81,14 @@ const ProductDetails = () => {
 
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleWishlist = async () => {
+    if (!user) {
+      navigate("/login", { state: { from: `/product/${product.id}` } });
+      return;
+    }
+    await toggleWishlist(product.id);
   };
 
   return (
@@ -159,7 +170,7 @@ const ProductDetails = () => {
                 className={`${styles.wishlistBtn} ${
                   wishlisted ? styles.wishlisted : ""
                 }`}
-                onClick={() => toggleWishlist(product.id)}
+                onClick={() => void handleWishlist()}
               >
                 <Heart
                   size={22}

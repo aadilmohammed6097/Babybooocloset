@@ -1,10 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Heart, ShoppingBag } from "lucide-react";
 import type { Product } from "../../types";
 import { formatPrice } from "../../utils/formatPrice";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
+import { useAuth } from "../../context/AuthContext";
 import Button from "../Button/Button";
 import styles from "./ProductCard.module.css";
 
@@ -13,8 +14,10 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
+  const { user } = useAuth();
   const wishlisted = isWishlisted(product.id);
   const [added, setAdded] = useState(false);
 
@@ -25,9 +28,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
     window.setTimeout(() => setAdded(false), 2000);
   };
 
-  const handleWishlist = (e: React.MouseEvent) => {
+  const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
-    toggleWishlist(product.id);
+    if (!user) {
+      navigate("/login", { state: { from: window.location.pathname } });
+      return;
+    }
+    await toggleWishlist(product.id);
   };
 
   return (

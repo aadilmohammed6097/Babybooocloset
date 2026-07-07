@@ -71,6 +71,20 @@ export const placeOrder = async (
   return order;
 };
 
+export async function getOrdersByUserId(userId: string): Promise<AdminOrder[]> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(ORDER_SELECT)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as AdminOrder[];
+}
+
 export async function getOrdersByEmail(email: string): Promise<AdminOrder[]> {
   const { data, error } = await supabase
     .from("orders")

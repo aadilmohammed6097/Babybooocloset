@@ -199,6 +199,32 @@ export async function getProductById(id: string): Promise<Product | null> {
   return product ?? null;
 }
 
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(SELECT)
+    .in("id", ids);
+
+  if (error) {
+    const fallback = await supabase
+      .from("products")
+      .select(SELECT_WITHOUT_IMAGES)
+      .in("id", ids);
+
+    if (fallback.error || !fallback.data) return [];
+    return mapRows(fallback.data as unknown as ProductRow[]);
+  }
+
+  const products = await mapRows((data ?? []) as unknown as ProductRow[]);
+  const orderMap = new Map(ids.map((id, index) => [id, index]));
+
+  return products.sort(
+    (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
+  );
+}
+
 export async function getRelatedProducts(
   product: Product,
   limit = 4

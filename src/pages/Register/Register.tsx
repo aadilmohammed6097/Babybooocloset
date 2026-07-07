@@ -1,21 +1,23 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../../components/Button/Button";
-import styles from "./Login.module.css";
+import styles from "../Login/Login.module.css";
 
-const Login = () => {
+const Register = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { login } = useAuth();
+  const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const from =
-    (location.state as { from?: string } | null)?.from ?? "/";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -27,10 +29,16 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(form.email, form.password);
-      navigate(from, { replace: true });
+      await register(
+        form.email,
+        form.password,
+        form.firstName,
+        form.lastName,
+        form.phone
+      );
+      navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in.");
+      setError(err instanceof Error ? err.message : "Unable to create account.");
     } finally {
       setLoading(false);
     }
@@ -43,12 +51,28 @@ const Login = () => {
           Babybooocloset
         </Link>
 
-        <h1 className={styles.title}>Welcome Back</h1>
-        <p className={styles.subtitle}>
-          Sign in to access your orders and wishlist.
-        </p>
+        <h1 className={styles.title}>Create Account</h1>
+        <p className={styles.subtitle}>Join the Babybooocloset family today.</p>
 
         <form className={styles.form} onSubmit={handleSubmit}>
+          <input
+            name="firstName"
+            type="text"
+            placeholder="First Name"
+            value={form.firstName}
+            onChange={handleChange}
+            required
+            className={styles.input}
+          />
+          <input
+            name="lastName"
+            type="text"
+            placeholder="Last Name"
+            value={form.lastName}
+            onChange={handleChange}
+            required
+            className={styles.input}
+          />
           <input
             name="email"
             type="email"
@@ -56,6 +80,14 @@ const Login = () => {
             value={form.email}
             onChange={handleChange}
             required
+            className={styles.input}
+          />
+          <input
+            name="phone"
+            type="tel"
+            placeholder="Phone"
+            value={form.phone}
+            onChange={handleChange}
             className={styles.input}
           />
           <div className={styles.passwordWrap}>
@@ -66,6 +98,7 @@ const Login = () => {
               value={form.password}
               onChange={handleChange}
               required
+              minLength={6}
               className={`${styles.input} ${styles.passwordInput}`}
             />
             <button
@@ -81,21 +114,16 @@ const Login = () => {
           {error && <p className={styles.error}>{error}</p>}
 
           <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading}>
-            {loading ? "Signing In..." : "Sign In"}
+            {loading ? "Creating Account..." : "Register"}
           </Button>
         </form>
 
-        <p className={styles.adminOption}>
-          <Link to="/admin/login">Login as admin</Link>
-        </p>
-
         <p className={styles.switch}>
-          Don&apos;t have an account?{" "}
-          <Link to="/register">Register</Link>
+          Already have an account? <Link to="/login">Sign In</Link>
         </p>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default Register;

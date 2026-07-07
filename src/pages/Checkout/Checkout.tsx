@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CreditCard, Truck } from "lucide-react";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { getProfile } from "../../services/customerProfileService";
 import { formatPrice } from "../../utils/formatPrice";
 import { placeOrder } from "../../services/orderService";
 import Button from "../../components/Button/Button";
@@ -26,6 +28,7 @@ interface CheckoutFormState {
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
+  const { user } = useAuth();
   const [form, setForm] = useState<CheckoutFormState>({
     firstName: "",
     lastName: "",
@@ -42,6 +45,27 @@ const Checkout = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const prefillForm = async () => {
+      if (!user) return;
+
+      try {
+        const profile = await getProfile(user.id);
+        setForm((prev) => ({
+          ...prev,
+          firstName: profile?.first_name ?? prev.firstName,
+          lastName: profile?.last_name ?? prev.lastName,
+          email: user.email,
+          phone: profile?.phone ?? prev.phone,
+        }));
+      } catch {
+        setForm((prev) => ({ ...prev, email: user.email }));
+      }
+    };
+
+    void prefillForm();
+  }, [user]);
 
   const shippingCharge = form.shippingMethod === "Express" ? 199 : 0;
   const discount = 0;
@@ -69,7 +93,7 @@ const Checkout = () => {
     try {
       const createdOrder = await placeOrder(
         {
-          user_id: null,
+          user_id: user?.id ?? null,
           email: form.email,
           phone: form.phone,
           first_name: form.firstName,

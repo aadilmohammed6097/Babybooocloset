@@ -117,6 +117,17 @@
   font-weight: 500;
 }
 
+.switch a {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.error {
+  font-size: 0.8125rem;
+  color: #c0392b;
+  text-align: center;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;

@@ -65,10 +65,6 @@ export const getAdminSession = async (): Promise<{
     };
   }
 
-  if (currentUser) {
-    await supabase.auth.signOut();
-  }
-
   return { user: null, session: null };
 };
 

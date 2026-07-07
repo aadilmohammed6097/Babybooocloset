@@ -2,6 +2,8 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import Loader from "../components/Loader/Loader";
+import ProtectedRoute from "../components/ProtectedRoute/ProtectedRoute";
+import GuestRoute from "../components/GuestRoute/GuestRoute";
 import AdminRoutes from "../admin/routes/AdminRoutes";
 
 const Home = lazy(() => import("../pages/home/Home"));
@@ -14,6 +16,9 @@ const Checkout = lazy(() => import("../pages/Checkout/Checkout"));
 const OrderSuccess = lazy(() => import("../pages/Checkout/OrderSuccess"));
 const Orders = lazy(() => import("../pages/Orders/Orders"));
 const Login = lazy(() => import("../pages/Login/Login"));
+const Register = lazy(() => import("../pages/Register/Register"));
+const Profile = lazy(() => import("../pages/Profile/Profile"));
+const Wishlist = lazy(() => import("../pages/Wishlist/Wishlist"));
 const Contact = lazy(() => import("../pages/Contact/Contact"));
 
 const AppRoutes = () => {
@@ -30,8 +35,46 @@ const AppRoutes = () => {
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/checkout/success" element={<OrderSuccess />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/login" element={<Login />} />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <Orders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wishlist"
+              element={
+                <ProtectedRoute>
+                  <Wishlist />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                <GuestRoute>
+                  <Login />
+                </GuestRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <GuestRoute>
+                  <Register />
+                </GuestRoute>
+              }
+            />
             <Route path="/contact" element={<Contact />} />
           </Route>
         </Routes>

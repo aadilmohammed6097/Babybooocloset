@@ -1,19 +1,49 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Menu, X, Search, User, ShoppingBag } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Menu, X, Search, User, ShoppingBag, Heart, LogOut } from "lucide-react";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { useWishlist } from "../../context/WishlistContext";
+import Modal from "../Modal/Modal";
+import Button from "../Button/Button";
 import styles from "./Navbar.module.css";
 
 const Navbar = () => {
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { totalItems } = useCart();
+  const { user, logout } = useAuth();
+  const { wishlist } = useWishlist();
 
   const links = [
     { name: "Home", path: "/" },
     { name: "Shop", path: "/shop" },
-    { name: "Contact", path: "/contact" },
-    { name: "My Orders", path: "/orders" },
   ];
+
+  const authLinks = user
+    ? [
+        { name: "Wishlist", path: "/wishlist" },
+        { name: "My Orders", path: "/orders" },
+      ]
+    : [
+        { name: "Login", path: "/login" },
+        { name: "Register", path: "/register" },
+      ];
+
+  const handleLogout = async () => {
+    await logout();
+    setShowLogoutModal(false);
+    setMobileOpen(false);
+    navigate("/");
+  };
+
+  const openLogoutModal = () => {
+    setShowLogoutModal(true);
+    setMobileOpen(false);
+  };
+
+  const closeMobile = () => setMobileOpen(false);
 
   return (
     <header className={styles.navbar}>
@@ -35,13 +65,36 @@ const Navbar = () => {
               {item.name}
             </NavLink>
           ))}
+          {authLinks.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                isActive ? styles.active : styles.link
+              }
+            >
+              {item.name}
+            </NavLink>
+          ))}
         </nav>
 
         <div className={styles.actions}>
           <Link to="/shop" className={styles.actionBtn} aria-label="Search">
             <Search size={20} />
           </Link>
-          <Link to="/login" className={styles.actionBtn} aria-label="Profile">
+          {user && (
+            <Link to="/wishlist" className={`${styles.actionBtn} ${styles.cart}`} aria-label="Wishlist">
+              <Heart size={20} />
+              {wishlist.length > 0 && (
+                <span className={styles.badge}>{wishlist.length}</span>
+              )}
+            </Link>
+          )}
+          <Link
+            to={user ? "/profile" : "/login"}
+            className={styles.actionBtn}
+            aria-label={user ? "Profile" : "Login"}
+          >
             <User size={20} />
           </Link>
           <Link to="/cart" className={`${styles.actionBtn} ${styles.cart}`} aria-label="Cart">
@@ -50,9 +103,31 @@ const Navbar = () => {
               <span className={styles.badge}>{totalItems}</span>
             )}
           </Link>
+          {user && (
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={openLogoutModal}
+              aria-label="Logout"
+            >
+              <LogOut size={20} />
+            </button>
+          )}
         </div>
 
         <div className={styles.mobileHeaderActions}>
+          {user && (
+            <Link
+              to="/wishlist"
+              className={`${styles.actionBtn} ${styles.cart} ${styles.mobileCart}`}
+              aria-label="Wishlist"
+            >
+              <Heart size={20} />
+              {wishlist.length > 0 && (
+                <span className={styles.badge}>{wishlist.length}</span>
+              )}
+            </Link>
+          )}
           <Link
             to="/cart"
             className={`${styles.actionBtn} ${styles.cart} ${styles.mobileCart}`}
@@ -84,41 +159,53 @@ const Navbar = () => {
               className={({ isActive }) =>
                 isActive ? styles.mobileActive : styles.mobileLink
               }
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMobile}
             >
               {item.name}
             </NavLink>
           ))}
-          <div className={styles.mobileActions}>
-            <Link
-              to="/shop"
-              className={styles.actionBtn}
-              onClick={() => setMobileOpen(false)}
+          {authLinks.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                isActive ? styles.mobileActive : styles.mobileLink
+              }
+              onClick={closeMobile}
             >
-              <Search size={20} />
-            </Link>
-            <Link
-              to="/login"
-              className={styles.actionBtn}
-              onClick={() => setMobileOpen(false)}
-              aria-label="Profile"
+              {item.name}
+            </NavLink>
+          ))}
+          {user && (
+            <button
+              type="button"
+              className={styles.mobileLogout}
+              onClick={openLogoutModal}
             >
-              <User size={20} />
-            </Link>
-            <Link
-              to="/cart"
-              className={`${styles.actionBtn} ${styles.cart}`}
-              onClick={() => setMobileOpen(false)}
-              aria-label="Cart"
-            >
-              <ShoppingBag size={20} />
-              {totalItems > 0 && (
-                <span className={styles.badge}>{totalItems}</span>
-              )}
-            </Link>
-          </div>
+              <LogOut size={18} />
+              Logout
+            </button>
+          )}
         </div>
       )}
+
+      <Modal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Log Out"
+      >
+        <p className={styles.logoutMessage}>
+          Are you sure you want to log out of your account?
+        </p>
+        <div className={styles.logoutActions}>
+          <Button variant="outline" onClick={() => setShowLogoutModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => void handleLogout()}>
+            Log Out
+          </Button>
+        </div>
+      </Modal>
     </header>
   );
 };

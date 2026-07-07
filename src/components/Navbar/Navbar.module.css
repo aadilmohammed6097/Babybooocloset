@@ -170,6 +170,31 @@
   }
 }
 
+.mobileLogout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  border-top: 1px solid var(--color-border);
+  margin-top: 8px;
+}
+
+.logoutMessage {
+  margin-bottom: 24px;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.logoutActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;

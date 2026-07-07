@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Package, FileText } from "lucide-react";
-import { getOrdersByEmail } from "../../services/orderService";
+import { getOrdersByUserId } from "../../services/orderService";
+import { useAuth } from "../../context/AuthContext";
 import { formatPrice } from "../../utils/formatPrice";
 import type { AdminOrder, AdminOrderStatus, OrderStatus } from "../../types";
 import Button from "../../components/Button/Button";
@@ -24,6 +25,7 @@ const mapOrderStatus = (status: AdminOrderStatus): OrderStatus => {
 };
 
 const Orders = () => {
+  const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,16 +34,16 @@ const Orders = () => {
 
   useEffect(() => {
     const loadOrders = async () => {
-      const email = localStorage.getItem("customerEmail");
+      if (authLoading) return;
 
-      if (!email) {
+      if (!user) {
         setOrders([]);
         setLoading(false);
         return;
       }
 
       try {
-        setOrders(await getOrdersByEmail(email));
+        setOrders(await getOrdersByUserId(user.id));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load orders.");
       } finally {
@@ -49,12 +51,12 @@ const Orders = () => {
       }
     };
 
-    loadOrders();
-  }, []);
+    void loadOrders();
+  }, [user, authLoading]);
 
   const order = orders.find((item) => item.id === selectedOrder);
 
-  if (loading) return <Loader />;
+  if (authLoading || loading) return <Loader />;
 
   return (
     <>
@@ -66,7 +68,7 @@ const Orders = () => {
 
           {!error && orders.length === 0 ? (
             <p className={styles.empty}>You have no orders yet.</p>
-          ) : (
+          ) : !error ? (
             <div className={styles.list}>
               {orders.map((orderItem) => {
                 const displayStatus = mapOrderStatus(orderItem.order_status);
@@ -132,7 +134,7 @@ const Orders = () => {
                 );
               })}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
