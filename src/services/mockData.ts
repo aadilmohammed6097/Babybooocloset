@@ -1,4 +1,4 @@
-import type { Category, Order, Product } from "../types";
+import type { Category, Product } from "../types";
 
 const collectImagePool = (items: { image: string; images?: string[] }[]): string[] => [
   ...new Set(
@@ -179,44 +179,6 @@ export const products: Product[] = baseProducts.map((product) => {
     images: getTestImages(`product-gallery-${product.id}`, testImagePool),
   };
 });
-
-export const orders: Order[] = [
-  {
-    id: "BF-2024-001",
-    date: "2024-11-15",
-    status: "delivered",
-    total: 77,
-    shippingAddress: {
-      fullName: "Sarah Johnson",
-      email: "sarah@example.com",
-      phone: "555-0123",
-      address: "123 Maple Street",
-      city: "Portland",
-      state: "OR",
-      zipCode: "97201",
-    },
-    items: [
-      { product: products[0]!, quantity: 1, size: "0-3M" },
-      { product: products[3]!, quantity: 1, size: "One Size" },
-    ],
-  },
-  {
-    id: "BF-2024-002",
-    date: "2024-12-02",
-    status: "shipped",
-    total: 45,
-    shippingAddress: {
-      fullName: "Sarah Johnson",
-      email: "sarah@example.com",
-      phone: "555-0123",
-      address: "123 Maple Street",
-      city: "Portland",
-      state: "OR",
-      zipCode: "97201",
-    },
-    items: [{ product: products[1]!, quantity: 1, size: "3-6M" }],
-  },
-];
 
 export const getProductById = (id: string): Product | undefined =>
   products.find((p) => p.id === id);

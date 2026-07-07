@@ -24,23 +24,30 @@ interface ProductRow {
   is_featured: boolean;
   is_new: boolean;
   category_id: string | null;
+  subcategory_id: string | null;
   age_group?: string | null;
   sizes?: string[] | null;
   categories?: { slug: string; name: string } | { slug: string; name: string }[] | null;
+  subcategories?: { slug: string; title: string } | { slug: string; title: string }[] | null;
   product_images?: ProductImageRow[] | null;
 }
 
 const DEFAULT_SIZES = ["One Size"];
 
 const SELECT =
-  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, age_group, sizes, categories ( slug, name ), product_images ( id, image_url, display_order, is_primary )";
+  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, subcategory_id, age_group, sizes, categories ( slug, name ), subcategories ( slug, title ), product_images ( id, image_url, display_order, is_primary )";
 
 const SELECT_WITHOUT_IMAGES =
-  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, age_group, sizes, categories ( slug, name )";
+  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, subcategory_id, age_group, sizes, categories ( slug, name ), subcategories ( slug, title )";
 
 const getCategory = (row: ProductRow) => {
   if (!row.categories) return null;
   return Array.isArray(row.categories) ? row.categories[0] : row.categories;
+};
+
+const getSubcategory = (row: ProductRow) => {
+  if (!row.subcategories) return null;
+  return Array.isArray(row.subcategories) ? row.subcategories[0] : row.subcategories;
 };
 
 const getImageUrls = (row: ProductRow, imageMap?: Record<string, ProductImageRow[]>): string[] => {
@@ -68,6 +75,7 @@ const getImageUrls = (row: ProductRow, imageMap?: Record<string, ProductImageRow
 
 const mapProduct = (row: ProductRow, imageMap?: Record<string, ProductImageRow[]>): Product => {
   const category = getCategory(row);
+  const subcategory = getSubcategory(row);
   const imageUrls = getImageUrls(row, imageMap);
   const nestedImages = row.product_images ?? imageMap?.[row.id] ?? [];
   const primaryFromImages = getPrimaryImageUrl(
@@ -92,6 +100,10 @@ const mapProduct = (row: ProductRow, imageMap?: Record<string, ProductImageRow[]
     images: imageUrls.length > 0 ? imageUrls : image ? [image] : [],
     category: category?.slug ?? "unisex",
     categoryId: row.category_id ?? undefined,
+    categoryTitle: category?.name,
+    subcategory: subcategory?.slug,
+    subcategoryId: row.subcategory_id ?? undefined,
+    subcategoryTitle: subcategory?.title,
     ageGroup: (row.age_group ?? "0-3m") as Product["ageGroup"],
     sizes: row.sizes?.length ? row.sizes : DEFAULT_SIZES,
     isFeatured: row.is_featured,
@@ -196,7 +208,10 @@ export async function getRelatedProducts(
     .filter(
       (item) =>
         item.id !== product.id &&
-        (item.categoryId === product.categoryId || item.category === product.category)
+        (item.categoryId === product.categoryId ||
+          item.category === product.category ||
+          item.subcategoryId === product.subcategoryId ||
+          item.subcategory === product.subcategory)
     )
     .slice(0, limit);
 }

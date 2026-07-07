@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getProducts } from "../../services/productService";
 import { getCategories } from "../../services/categoryService";
-import type { AgeGroup, Category, Product } from "../../types";
+import { getSubcategories } from "../../services/subcategoryService";
+import type { AgeGroup, Category, Product, Subcategory } from "../../types";
 import ProductCard from "../../components/ProductCard/productCard";
 import Loader from "../../components/Loader/Loader";
 import Footer from "../../components/footer/Footer";
@@ -37,16 +38,31 @@ const isCategoryActive = (category: Category, filter: string | null): boolean =>
   return category.slug === filter || category.id === filter;
 };
 
+const isSubcategoryActive = (
+  subcategory: Subcategory,
+  filter: string | null
+): boolean => {
+  if (!filter) return false;
+  return subcategory.slug === filter || subcategory.id === filter;
+};
+
+const matchesSubcategory = (product: Product, filter: string | null): boolean => {
+  if (!filter) return true;
+  return product.subcategory === filter || product.subcategoryId === filter;
+};
+
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const categoryFilter = searchParams.get("category");
+  const subcategoryFilter = searchParams.get("subcategory");
   const ageFilter = searchParams.get("age") as AgeGroup | null;
   const sort = (searchParams.get("sort") as SortOption | null) ?? "default";
 
@@ -58,14 +74,16 @@ const Shop = () => {
       setError("");
 
       try {
-        const [productData, categoryData] = await Promise.all([
+        const [productData, categoryData, subcategoryData] = await Promise.all([
           getProducts(),
           getCategories(),
+          getSubcategories(),
         ]);
 
         if (!cancelled) {
           setProducts(productData);
           setCategories(categoryData);
+          setSubcategories(subcategoryData);
         }
       } catch {
         if (!cancelled) {
@@ -87,7 +105,18 @@ const Shop = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [categoryFilter, ageFilter, sort]);
+  }, [categoryFilter, subcategoryFilter, ageFilter, sort]);
+
+  const activeCategory = categories.find(
+    (category) => category.slug === categoryFilter || category.id === categoryFilter
+  );
+
+  const visibleSubcategories = useMemo(() => {
+    if (!activeCategory) return [];
+    return subcategories.filter(
+      (subcategory) => subcategory.category_id === activeCategory.id
+    );
+  }, [subcategories, activeCategory]);
 
   const filteredProducts = useMemo(() => {
     const filtered = products.filter((product) => {
@@ -99,6 +128,7 @@ const Shop = () => {
       return (
         matchesSearch &&
         matchesCategory(product, categoryFilter) &&
+        matchesSubcategory(product, subcategoryFilter) &&
         matchesAge
       );
     });
@@ -112,7 +142,7 @@ const Shop = () => {
     }
 
     return filtered;
-  }, [products, search, categoryFilter, ageFilter, sort]);
+  }, [products, search, categoryFilter, subcategoryFilter, ageFilter, sort]);
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice(
@@ -127,6 +157,17 @@ const Shop = () => {
     } else {
       params.delete(key);
     }
+    setSearchParams(params);
+  };
+
+  const handleCategoryFilter = (value: string | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("category", value);
+    } else {
+      params.delete("category");
+    }
+    params.delete("subcategory");
     setSearchParams(params);
   };
 
@@ -163,7 +204,7 @@ const Shop = () => {
                 <button
                   type="button"
                   className={`${styles.filterOption} ${!categoryFilter ? styles.activeFilter : ""}`}
-                  onClick={() => updateFilter("category", null)}
+                  onClick={() => handleCategoryFilter(null)}
                 >
                   All
                 </button>
@@ -172,12 +213,35 @@ const Shop = () => {
                     key={cat.id}
                     type="button"
                     className={`${styles.filterOption} ${isCategoryActive(cat, categoryFilter) ? styles.activeFilter : ""}`}
-                    onClick={() => updateFilter("category", cat.slug)}
+                    onClick={() => handleCategoryFilter(cat.slug)}
                   >
                     {cat.title}
                   </button>
                 ))}
               </div>
+
+              {visibleSubcategories.length > 0 && (
+                <div className={styles.filterGroup}>
+                  <h3 className={styles.filterTitle}>Subcategory</h3>
+                  <button
+                    type="button"
+                    className={`${styles.filterOption} ${!subcategoryFilter ? styles.activeFilter : ""}`}
+                    onClick={() => updateFilter("subcategory", null)}
+                  >
+                    All
+                  </button>
+                  {visibleSubcategories.map((subcategory) => (
+                    <button
+                      key={subcategory.id}
+                      type="button"
+                      className={`${styles.filterOption} ${isSubcategoryActive(subcategory, subcategoryFilter) ? styles.activeFilter : ""}`}
+                      onClick={() => updateFilter("subcategory", subcategory.slug)}
+                    >
+                      {subcategory.title}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className={styles.filterGroup}>
                 <h3 className={styles.filterTitle}>Age</h3>

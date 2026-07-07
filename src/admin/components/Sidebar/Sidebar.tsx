@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Package, Tags, ShoppingCart, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Tags, Layers, ShoppingCart, Settings, LogOut } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import styles from "./Sidebar.module.css";
 
@@ -7,6 +7,7 @@ const links = [
   { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Products", path: "/admin/products", icon: Package },
   { name: "Categories", path: "/admin/categories", icon: Tags },
+  { name: "Subcategories", path: "/admin/subcategories", icon: Layers },
   { name: "Orders", path: "/admin/orders", icon: ShoppingCart },
   { name: "Settings", path: "/admin/settings", icon: Settings },
 ];

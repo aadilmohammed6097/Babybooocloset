@@ -8,7 +8,7 @@ import {
 } from "../../services/productImageService";
 
 const SELECT =
-  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, age_group, category_id, categories ( name )";
+  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, age_group, category_id, subcategory_id, categories ( name ), subcategories ( title, slug )";
 
 const mapAdminProduct = (
   row: Record<string, unknown>,
@@ -16,6 +16,8 @@ const mapAdminProduct = (
 ): AdminProduct => {
   const categories = row.categories as { name: string } | { name: string }[] | null;
   const category = Array.isArray(categories) ? categories[0] : categories;
+  const subcategories = row.subcategories as { title: string; slug: string } | { title: string; slug: string }[] | null;
+  const subcategory = Array.isArray(subcategories) ? subcategories[0] : subcategories;
   const rawAgeGroup = (row.age_group as string) ?? "0-3m";
   const validAgeGroups = ["0-3m", "3-6m", "6-12m", "12-24m"] as const;
   const age_group = validAgeGroups.includes(rawAgeGroup as (typeof validAgeGroups)[number])
@@ -37,6 +39,9 @@ const mapAdminProduct = (
     age_group,
     category_id: (row.category_id as string) ?? null,
     category_name: category?.name,
+    subcategory_id: (row.subcategory_id as string) ?? null,
+    subcategory_name: subcategory?.title,
+    subcategory_slug: subcategory?.slug,
   };
 };
 
@@ -92,6 +97,7 @@ export async function getAdminProductById(id: string): Promise<AdminProduct | nu
 export async function createProduct(input: ProductInput): Promise<AdminProduct> {
   const payload = {
     ...input,
+    subcategory_id: input.subcategory_id || null,
     is_featured: input.featured,
     is_new: input.new_arrival,
   } as Record<string, unknown>;
@@ -114,6 +120,9 @@ export async function updateProduct(
   input: Partial<ProductInput>
 ): Promise<AdminProduct> {
   const payload: Record<string, unknown> = { ...input };
+  if (typeof input.subcategory_id !== "undefined") {
+    payload.subcategory_id = input.subcategory_id || null;
+  }
   if (typeof input.featured !== "undefined") payload.is_featured = input.featured;
   if (typeof input.new_arrival !== "undefined") payload.is_new = input.new_arrival;
   delete payload.featured;

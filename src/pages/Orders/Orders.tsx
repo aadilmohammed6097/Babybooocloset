@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Package, FileText } from "lucide-react";
-import { orders } from "../../services/mockData";
+import { getOrdersByEmail } from "../../services/orderService";
 import { formatPrice } from "../../utils/formatPrice";
-import type { OrderStatus } from "../../types";
+import type { AdminOrder, AdminOrderStatus, OrderStatus } from "../../types";
 import Button from "../../components/Button/Button";
 import Modal from "../../components/Modal/Modal";
+import Loader from "../../components/Loader/Loader";
 import Footer from "../../components/footer/Footer";
 import styles from "./Orders.module.css";
 
@@ -15,11 +16,45 @@ const statusLabels: Record<OrderStatus, string> = {
   delivered: "Delivered",
 };
 
+const mapOrderStatus = (status: AdminOrderStatus): OrderStatus => {
+  if (status === "Delivered") return "delivered";
+  if (status === "Shipped" || status === "Out for Delivery") return "shipped";
+  if (status === "Confirmed" || status === "Packed") return "processing";
+  return "pending";
+};
+
 const Orders = () => {
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
 
-  const order = orders.find((o) => o.id === selectedOrder);
+  useEffect(() => {
+    const loadOrders = async () => {
+      const email = localStorage.getItem("customerEmail");
+
+      if (!email) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setOrders(await getOrdersByEmail(email));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to load orders.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, []);
+
+  const order = orders.find((item) => item.id === selectedOrder);
+
+  if (loading) return <Loader />;
 
   return (
     <>
@@ -27,77 +62,75 @@ const Orders = () => {
         <div className={styles.container}>
           <h1 className={styles.title}>My Orders</h1>
 
-          {orders.length === 0 ? (
+          {error && <p className={styles.empty}>{error}</p>}
+
+          {!error && orders.length === 0 ? (
             <p className={styles.empty}>You have no orders yet.</p>
           ) : (
             <div className={styles.list}>
-              {orders.map((orderItem) => (
-                <div key={orderItem.id} className={styles.orderCard}>
-                  <div className={styles.orderHeader}>
-                    <div className={styles.orderMeta}>
-                      <Package size={20} />
-                      <div>
-                        <p className={styles.orderId}>{orderItem.id}</p>
-                        <p className={styles.orderDate}>{orderItem.date}</p>
-                      </div>
-                    </div>
-                    <span
-                      className={`${styles.status} ${styles[orderItem.status]}`}
-                    >
-                      {statusLabels[orderItem.status]}
-                    </span>
-                  </div>
+              {orders.map((orderItem) => {
+                const displayStatus = mapOrderStatus(orderItem.order_status);
 
-                  <div className={styles.orderItems}>
-                    {orderItem.items.map((item) => (
-                      <div
-                        key={`${item.product.id}-${item.size}`}
-                        className={styles.orderItem}
-                      >
-                        <img
-                          src={item.product.image}
-                          alt={item.product.name}
-                        />
+                return (
+                  <div key={orderItem.id} className={styles.orderCard}>
+                    <div className={styles.orderHeader}>
+                      <div className={styles.orderMeta}>
+                        <Package size={20} />
                         <div>
-                          <p className={styles.itemName}>{item.product.name}</p>
-                          <p className={styles.itemMeta}>
-                            {item.size} × {item.quantity}
+                          <p className={styles.orderId}>{orderItem.order_number}</p>
+                          <p className={styles.orderDate}>
+                            {new Date(orderItem.created_at).toLocaleDateString()}
                           </p>
                         </div>
-                        <span>
-                          {formatPrice(item.product.price * item.quantity)}
-                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <span className={`${styles.status} ${styles[displayStatus]}`}>
+                        {statusLabels[displayStatus]}
+                      </span>
+                    </div>
 
-                  <div className={styles.orderFooter}>
-                    <p className={styles.orderTotal}>
-                      Total: {formatPrice(orderItem.total)}
-                    </p>
-                    <div className={styles.orderActions}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedOrder(orderItem.id)}
-                      >
-                        View Details
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedOrder(orderItem.id);
-                          setShowInvoice(true);
-                        }}
-                      >
-                        <FileText size={16} />
-                        Invoice
-                      </Button>
+                    <div className={styles.orderItems}>
+                      {orderItem.order_items.map((item) => (
+                        <div key={item.id} className={styles.orderItem}>
+                          <img src={item.product_image} alt={item.product_name} />
+                          <div>
+                            <p className={styles.itemName}>{item.product_name}</p>
+                            <p className={styles.itemMeta}>
+                              {item.size} × {item.quantity}
+                            </p>
+                          </div>
+                          <span>{formatPrice(item.line_total)}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={styles.orderFooter}>
+                      <p className={styles.orderTotal}>
+                        Total: {formatPrice(orderItem.total_amount)}
+                      </p>
+                      <div className={styles.orderActions}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedOrder(orderItem.id)}
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedOrder(orderItem.id);
+                            setShowInvoice(true);
+                          }}
+                        >
+                          <FileText size={16} />
+                          Invoice
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -112,30 +145,35 @@ const Orders = () => {
           <div className={styles.details}>
             <div className={styles.detailRow}>
               <span>Order ID</span>
-              <span>{order.id}</span>
+              <span>{order.order_number}</span>
             </div>
             <div className={styles.detailRow}>
               <span>Date</span>
-              <span>{order.date}</span>
+              <span>{new Date(order.created_at).toLocaleDateString()}</span>
             </div>
             <div className={styles.detailRow}>
               <span>Status</span>
-              <span className={styles[order.status]}>
-                {statusLabels[order.status]}
+              <span className={styles[mapOrderStatus(order.order_status)]}>
+                {statusLabels[mapOrderStatus(order.order_status)]}
               </span>
             </div>
             <div className={styles.detailRow}>
               <span>Total</span>
-              <span>{formatPrice(order.total)}</span>
+              <span>{formatPrice(order.total_amount)}</span>
             </div>
             <h4 className={styles.shippingTitle}>Shipping Address</h4>
             <p className={styles.shippingInfo}>
-              {order.shippingAddress.fullName}
+              {`${order.first_name} ${order.last_name}`}
               <br />
-              {order.shippingAddress.address}
+              {order.address_line1}
               <br />
-              {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
-              {order.shippingAddress.zipCode}
+              {order.address_line2 && (
+                <>
+                  {order.address_line2}
+                  <br />
+                </>
+              )}
+              {order.city}, {order.state} {order.postal_code}
             </p>
           </div>
         )}
@@ -154,21 +192,21 @@ const Orders = () => {
             <p className={styles.invoiceHeader}>
               <strong>Babybooocloset</strong>
               <br />
-              Invoice #{order.id}
+              Invoice #{order.order_number}
               <br />
-              Date: {order.date}
+              Date: {new Date(order.created_at).toLocaleDateString()}
             </p>
-            {order.items.map((item) => (
-              <div key={`${item.product.id}-${item.size}`} className={styles.invoiceRow}>
+            {order.order_items.map((item) => (
+              <div key={item.id} className={styles.invoiceRow}>
                 <span>
-                  {item.product.name} ({item.size}) × {item.quantity}
+                  {item.product_name} ({item.size}) × {item.quantity}
                 </span>
-                <span>{formatPrice(item.product.price * item.quantity)}</span>
+                <span>{formatPrice(item.line_total)}</span>
               </div>
             ))}
             <div className={`${styles.invoiceRow} ${styles.invoiceTotal}`}>
               <span>Total</span>
-              <span>{formatPrice(order.total)}</span>
+              <span>{formatPrice(order.total_amount)}</span>
             </div>
           </div>
         )}

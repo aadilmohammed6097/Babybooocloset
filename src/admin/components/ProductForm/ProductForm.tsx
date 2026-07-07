@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
-import type { Category, ProductImage, ProductImageSubmitPayload, ProductInput } from "../../../types";
+import type { Category, ProductImage, ProductImageSubmitPayload, ProductInput, Subcategory } from "../../../types";
 import { getAdminCategories } from "../../services/adminCategoryService";
+import { getAdminSubcategories } from "../../services/adminSubcategoryService";
 import { MAX_PRODUCT_IMAGES } from "../../../services/productImageService";
 import styles from "../../styles/AdminShared.module.css";
 import imageStyles from "./ProductForm.module.css";
@@ -29,6 +30,7 @@ const defaultValues: ProductInput = {
   new_arrival: false,
   age_group: "0-3m",
   category_id: "",
+  subcategory_id: "",
 };
 
 const ProductForm = ({
@@ -39,6 +41,7 @@ const ProductForm = ({
   uploading,
 }: ProductFormProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [form, setForm] = useState<ProductInput>({ ...defaultValues, ...initial });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -48,7 +51,12 @@ const ProductForm = ({
   const [newPreviews, setNewPreviews] = useState<string[]>([]);
 
   useEffect(() => {
-    getAdminCategories().then(setCategories);
+    Promise.all([getAdminCategories(), getAdminSubcategories()]).then(
+      ([categoryData, subcategoryData]) => {
+        setCategories(categoryData);
+        setSubcategories(subcategoryData);
+      }
+    );
   }, []);
 
   useEffect(() => {
@@ -77,6 +85,11 @@ const ProductForm = ({
     [existingImages, deletedImageIds]
   );
 
+  const availableSubcategories = useMemo(
+    () => subcategories.filter((subcategory) => subcategory.category_id === form.category_id),
+    [subcategories, form.category_id]
+  );
+
   const totalImageCount = visibleExistingImages.length + newFiles.length;
   const remainingSlots = MAX_PRODUCT_IMAGES - totalImageCount;
 
@@ -96,6 +109,7 @@ const ProductForm = ({
             : name === "sale_price"
               ? value === "" ? null : Number(value)
               : value,
+      ...(name === "category_id" ? { subcategory_id: "" } : {}),
     }));
   };
 
@@ -195,6 +209,31 @@ const ProductForm = ({
             <option value="">Select category</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="subcategory_id">Subcategory</label>
+          <select
+            id="subcategory_id"
+            name="subcategory_id"
+            value={form.subcategory_id}
+            onChange={handleChange}
+            disabled={!form.category_id || availableSubcategories.length === 0}
+            className={styles.select}
+          >
+            <option value="">
+              {!form.category_id
+                ? "Select a category first"
+                : availableSubcategories.length === 0
+                  ? "No subcategories available"
+                  : "Select subcategory"}
+            </option>
+            {availableSubcategories.map((subcategory) => (
+              <option key={subcategory.id} value={subcategory.id}>
+                {subcategory.title}
+              </option>
             ))}
           </select>
         </div>

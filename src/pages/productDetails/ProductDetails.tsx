@@ -10,6 +10,7 @@ import { formatPrice } from "../../utils/formatPrice";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
 import ProductCard from "../../components/ProductCard/productCard";
+import ProductImageGallery from "../../components/ProductImageGallery/ProductImageGallery";
 import Button from "../../components/Button/Button";
 import Loader from "../../components/Loader/Loader";
 import Footer from "../../components/footer/Footer";
@@ -25,7 +26,6 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [activeImage, setActiveImage] = useState(0);
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
@@ -38,10 +38,6 @@ const ProductDetails = () => {
       setLoading(true);
 
       const data = await getProductById(id);
-
-      console.log("Product:", data);
-      console.log("Image:", data?.image);
-      console.log("Images:", data?.images);
 
       setProduct(data);
 
@@ -88,30 +84,16 @@ const ProductDetails = () => {
     <>
       <div className={styles.page}>
         <div className={styles.container}>
-          <div className={styles.gallery}>
-            <div className={styles.mainImage}>
-              <img src={images[activeImage]} alt={product.name} />
-            </div>
-
-            {images.length > 1 && (
-              <div className={styles.thumbnails}>
-                {images.map((img, index) => (
-                  <button
-                    key={index}
-                    className={`${styles.thumbnail} ${
-                      activeImage === index ? styles.activeThumb : ""
-                    }`}
-                    onClick={() => setActiveImage(index)}
-                  >
-                    <img src={img} alt={`${product.name} ${index + 1}`} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProductImageGallery images={images} productName={product.name} />
 
           <div className={styles.info}>
             <h1 className={styles.name}>{product.name}</h1>
+
+            {(product.categoryTitle || product.subcategoryTitle) && (
+              <p className={styles.categoryMeta}>
+                {[product.categoryTitle, product.subcategoryTitle].filter(Boolean).join(" / ")}
+              </p>
+            )}
 
             <p className={styles.price}>
               {formatPrice(product.price)}

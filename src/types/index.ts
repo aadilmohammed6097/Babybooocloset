@@ -6,6 +6,10 @@ export interface Product {
   images?: string[];
   category: string;
   categoryId?: string;
+  categoryTitle?: string;
+  subcategory?: string;
+  subcategoryId?: string;
+  subcategoryTitle?: string;
   ageGroup: AgeGroup;
   sizes: string[];
   description: string;
@@ -24,6 +28,19 @@ export interface Category {
   slug: string;
   title: string;
   image: string;
+}
+
+export interface Subcategory {
+  id: string;
+  category_id: string;
+  title: string;
+  slug: string;
+}
+
+export interface SubcategoryInput {
+  category_id: string;
+  title: string;
+  slug: string;
 }
 
 export interface CartItem {
@@ -186,6 +203,9 @@ export interface AdminProduct {
   age_group: AgeGroup;
   category_id: string | null;
   category_name?: string;
+  subcategory_id: string | null;
+  subcategory_name?: string;
+  subcategory_slug?: string;
 }
 
 export interface ProductInput {
@@ -198,6 +218,7 @@ export interface ProductInput {
   new_arrival: boolean;
   age_group: AgeGroup;
   category_id: string;
+  subcategory_id: string;
 }
 
 export interface CategoryInput {

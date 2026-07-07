@@ -11,6 +11,7 @@ const Products = lazy(() => import("../pages/Products/Products"));
 const AddProduct = lazy(() => import("../pages/Products/AddProduct"));
 const EditProduct = lazy(() => import("../pages/Products/EditProduct"));
 const Categories = lazy(() => import("../pages/Categories/Categories"));
+const Subcategories = lazy(() => import("../pages/Subcategories/Subcategories"));
 const Orders = lazy(() => import("../pages/Orders/Orders"));
 const AdminPage = lazy(() => import("../pages/AdminPage/AdminPage"));
 
@@ -35,6 +36,7 @@ const AdminRoutes = () => {
             <Route path="products/add" element={<AddProduct />} />
             <Route path="products/edit/:id" element={<EditProduct />} />
             <Route path="categories" element={<Categories />} />
+            <Route path="subcategories" element={<Subcategories />} />
             <Route path="orders" element={<Orders />} />
             <Route
               path="settings"

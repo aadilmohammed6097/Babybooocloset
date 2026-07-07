@@ -92,6 +92,7 @@ const Checkout = () => {
       );
 
       clearCart();
+      localStorage.setItem("customerEmail", form.email);
       navigate(`/checkout/success?orderNumber=${createdOrder.order_number}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to place order.");

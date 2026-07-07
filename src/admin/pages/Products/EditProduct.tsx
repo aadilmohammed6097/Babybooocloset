@@ -33,6 +33,7 @@ const EditProduct = () => {
           new_arrival: product.new_arrival,
           age_group: product.age_group,
           category_id: product.category_id ?? "",
+          subcategory_id: product.subcategory_id ?? "",
         });
         setInitialImages(product.images);
       }
