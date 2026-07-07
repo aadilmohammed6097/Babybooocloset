@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
 import { getProducts } from "../../services/productService";
 import { getCategories } from "../../services/categoryService";
 import type { AgeGroup, Category, Product } from "../../types";
 import ProductCard from "../../components/ProductCard/productCard";
 import Loader from "../../components/Loader/Loader";
 import Footer from "../../components/footer/Footer";
+import DropdownField from "../../components/FormFields/DropdownField";
+import SearchField from "../../components/FormFields/SearchField";
 import styles from "./Shop.module.css";
 
 const ITEMS_PER_PAGE = 8;
@@ -18,11 +19,13 @@ const ageGroups: { label: string; value: AgeGroup }[] = [
   { label: "12–24 months", value: "12-24m" },
 ];
 
-const priceRanges = [
-  { label: "Under ₹500", min: 0, max: 500 },
-  { label: "₹500 – ₹1000", min: 500, max: 1000 },
-  { label: "Over ₹1000", min: 1000, max: Infinity },
-];
+const sortOptions = [
+  { label: "Default", value: "default" },
+  { label: "Price: Low to High", value: "low-high" },
+  { label: "Price: High to Low", value: "high-low" },
+] as const;
+
+type SortOption = (typeof sortOptions)[number]["value"];
 
 const matchesCategory = (product: Product, filter: string | null): boolean => {
   if (!filter) return true;
@@ -45,7 +48,7 @@ const Shop = () => {
 
   const categoryFilter = searchParams.get("category");
   const ageFilter = searchParams.get("age") as AgeGroup | null;
-  const priceFilter = searchParams.get("price");
+  const sort = (searchParams.get("sort") as SortOption | null) ?? "default";
 
   useEffect(() => {
     let cancelled = false;
@@ -84,31 +87,32 @@ const Shop = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [categoryFilter, ageFilter, priceFilter]);
+  }, [categoryFilter, ageFilter, sort]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    const filtered = products.filter((product) => {
       const matchesSearch = product.name
         .toLowerCase()
         .includes(search.toLowerCase());
       const matchesAge = !ageFilter || product.ageGroup === ageFilter;
-      const matchesPrice =
-        !priceFilter ||
-        priceRanges.some(
-          (range) =>
-            range.label === priceFilter &&
-            product.price >= range.min &&
-            product.price < range.max
-        );
 
       return (
         matchesSearch &&
         matchesCategory(product, categoryFilter) &&
-        matchesAge &&
-        matchesPrice
+        matchesAge
       );
     });
-  }, [products, search, categoryFilter, ageFilter, priceFilter]);
+
+    if (sort === "low-high") {
+      return [...filtered].sort((a, b) => a.price - b.price);
+    }
+
+    if (sort === "high-low") {
+      return [...filtered].sort((a, b) => b.price - a.price);
+    }
+
+    return filtered;
+  }, [products, search, categoryFilter, ageFilter, sort]);
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice(
@@ -126,6 +130,10 @@ const Shop = () => {
     setSearchParams(params);
   };
 
+  const handleSortChange = (value: string) => {
+    updateFilter("sort", value === "default" ? null : value);
+  };
+
   if (loading) {
     return <Loader />;
   }
@@ -138,19 +146,15 @@ const Shop = () => {
 
           {error && <p className={styles.empty}>{error}</p>}
 
-          <div className={styles.searchBar}>
-            <Search size={20} className={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className={styles.searchInput}
-            />
-          </div>
+          <SearchField
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search products..."
+            className={styles.searchBar}
+          />
 
           <div className={styles.layout}>
             <aside className={styles.filters}>
@@ -196,33 +200,23 @@ const Shop = () => {
                 ))}
               </div>
 
-              <div className={styles.filterGroup}>
-                <h3 className={styles.filterTitle}>Price</h3>
-                <button
-                  type="button"
-                  className={`${styles.filterOption} ${!priceFilter ? styles.activeFilter : ""}`}
-                  onClick={() => updateFilter("price", null)}
-                >
-                  All Prices
-                </button>
-                {priceRanges.map((range) => (
-                  <button
-                    key={range.label}
-                    type="button"
-                    className={`${styles.filterOption} ${priceFilter === range.label ? styles.activeFilter : ""}`}
-                    onClick={() => updateFilter("price", range.label)}
-                  >
-                    {range.label}
-                  </button>
-                ))}
-              </div>
             </aside>
 
             <div className={styles.content}>
-              <p className={styles.resultCount}>
-                {filteredProducts.length} product
-                {filteredProducts.length !== 1 ? "s" : ""}
-              </p>
+              <div className={styles.contentHeader}>
+                <p className={styles.resultCount}>
+                  {filteredProducts.length} product
+                  {filteredProducts.length !== 1 ? "s" : ""}
+                </p>
+                <DropdownField
+                  label="Sort by"
+                  labelPosition="inline"
+                  value={sort}
+                  options={[...sortOptions]}
+                  onChange={handleSortChange}
+                  minWidth={210}
+                />
+              </div>
 
               {paginatedProducts.length > 0 ? (
                 <div className={styles.grid}>

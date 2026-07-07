@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import { getOrders, updateOrderStatus } from "../../services/orderService";
 import type { AdminOrder, AdminOrderItem, AdminOrderStatus, PaymentStatus } from "../../../types";
 import { ORDER_STATUSES, SORT_OPTIONS } from "../../../constants/orderConstants";
 import Loader from "../../../components/Loader/Loader";
 import Modal from "../../../components/Modal/Modal";
+import DropdownField from "../../../components/FormFields/DropdownField";
+import SearchField from "../../../components/FormFields/SearchField";
 import { formatPrice } from "../../../utils/formatPrice";
 import styles from "./Orders.module.css";
 
@@ -39,6 +41,16 @@ const ACTION_ITEMS: Array<{
   { label: "Deliver Order", status: "Delivered", allowed: ["Out for Delivery"] },
   { label: "Cancel Order", status: "Cancelled", allowed: ["Pending", "Confirmed", "Packed"] },
 ];
+
+const statusFilterOptions = [
+  { label: "All Orders", value: "All" },
+  ...ORDER_STATUSES.map((status) => ({ label: status, value: status })),
+];
+
+const sortFilterOptions = SORT_OPTIONS.map((option) => ({
+  label: option.label,
+  value: option.value,
+}));
 
 const Orders = () => {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -209,55 +221,34 @@ const Orders = () => {
       </div>
 
       <div className={styles.filters}>
-        <div className={styles.filterControl}>
-          <label htmlFor="order-filter" className={styles.controlLabel}>Status</label>
-          <div className={styles.selectWrapper}>
-            <select
-              id="order-filter"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as AdminOrderStatus | "All")}
-              className={styles.controlSelect}
-            >
-              <option value="All">All Orders</option>
-              {ORDER_STATUSES.map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className={styles.selectIcon} />
-          </div>
-        </div>
+        <DropdownField
+          id="order-filter"
+          label="Status"
+          value={filter}
+          options={statusFilterOptions}
+          onChange={(value) => setFilter(value as AdminOrderStatus | "All")}
+          className={styles.filterControl}
+        />
 
-        <div className={styles.filterControl}>
-          <label htmlFor="order-sort" className={styles.controlLabel}>Sort</label>
-          <div className={styles.selectWrapper}>
-            <select
-              id="order-sort"
-              value={sort}
-              onChange={(e) => setSort(e.target.value as (typeof SORT_OPTIONS[number])["value"])}
-              className={styles.controlSelect}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className={styles.selectIcon} />
-          </div>
-        </div>
+        <DropdownField
+          id="order-sort"
+          label="Sort"
+          value={sort}
+          options={sortFilterOptions}
+          onChange={(value) =>
+            setSort(value as (typeof SORT_OPTIONS[number])["value"])
+          }
+          className={styles.filterControl}
+        />
 
-        <div className={styles.searchControl}>
-          <label htmlFor="order-search" className={styles.controlLabel}>Search Orders</label>
-          <div className={styles.searchWrapper}>
-            <Search size={18} />
-            <input
-              id="order-search"
-              type="search"
-              placeholder="Search orders, customers or phone"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.search}
-            />
-          </div>
-        </div>
+        <SearchField
+          id="order-search"
+          label="Search Orders"
+          value={search}
+          onChange={setSearch}
+          placeholder="Search orders, customers or phone"
+          className={styles.searchControl}
+        />
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
@@ -376,8 +367,10 @@ const Orders = () => {
                           disabled={isUpdating || isOrderLocked(order.order_status)}
                           aria-expanded={isMenuOpen}
                           aria-haspopup="menu"
+                          aria-label="Edit order status"
                         >
-                          Action <ChevronDown size={16} className={isMenuOpen ? styles.chevronOpen : ""} />
+                          <Pencil size={14} aria-hidden="true" />
+                          <ChevronDown size={16} className={isMenuOpen ? styles.chevronOpen : ""} />
                         </button>
                       </div>
                     </td>
