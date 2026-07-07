@@ -1,70 +1,28 @@
 import { supabase } from "../../lib/supabase";
 
-const DEV_SESSION_KEY = "Babybooocloset_dev_admin";
-
 export interface AdminUser {
   id: string;
   email: string;
 }
 
-const adminEmail = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
-const adminPass = import.meta.env.VITE_ADMIN_PASS as string | undefined;
-
-export const isDevAuthEnabled = (): boolean =>
-  import.meta.env.DEV && !!adminEmail && !!adminPass;
-
-export const isAllowedAdmin = (email: string | undefined): boolean => {
+const isAdminUser = async (email: string | undefined): Promise<boolean> => {
   if (!email) return false;
-  if (!adminEmail) return true;
-  return email.toLowerCase() === adminEmail.toLowerCase();
-};
 
-export const getDevAdmin = (): AdminUser | null => {
-  if (!isDevAuthEnabled()) return null;
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("id")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
 
-  const raw = sessionStorage.getItem(DEV_SESSION_KEY);
-  if (!raw) return null;
-
-  try {
-    const user = JSON.parse(raw) as AdminUser;
-    return isAllowedAdmin(user.email) ? user : null;
-  } catch {
-    return null;
-  }
-};
-
-const setDevAdmin = (user: AdminUser) => {
-  sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(user));
-};
-
-export const clearDevAdmin = () => {
-  sessionStorage.removeItem(DEV_SESSION_KEY);
-};
-
-const tryDevSignIn = (
-  email: string,
-  password: string
-): AdminUser | null => {
-  if (!isDevAuthEnabled()) return null;
-
-  if (
-    email.toLowerCase() === adminEmail!.toLowerCase() &&
-    password === adminPass
-  ) {
-    const user: AdminUser = { id: "dev-admin", email: adminEmail! };
-    setDevAdmin(user);
-    return user;
+  if (error) {
+    throw new Error("Unable to verify admin access.");
   }
 
-  return null;
+  return !!data;
 };
 
 export const signInAdmin = async (email: string, password: string) => {
-  const devUser = tryDevSignIn(email, password);
-  if (devUser) {
-    return { session: null, user: devUser };
-  }
-
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -72,9 +30,10 @@ export const signInAdmin = async (email: string, password: string) => {
 
   if (error) throw error;
 
-  if (!isAllowedAdmin(data.user?.email)) {
+  const authorized = await isAdminUser(data.user?.email);
+  if (!authorized) {
     await supabase.auth.signOut();
-    throw new Error("You do not have permission to access the admin panel.");
+    throw new Error("Unauthorized");
   }
 
   return {
@@ -86,7 +45,6 @@ export const signInAdmin = async (email: string, password: string) => {
 };
 
 export const signOutAdmin = async () => {
-  clearDevAdmin();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 };
@@ -95,19 +53,18 @@ export const getAdminSession = async (): Promise<{
   user: AdminUser | null;
   session: unknown;
 }> => {
-  const devUser = getDevAdmin();
-  if (devUser) {
-    return { user: devUser, session: null };
-  }
-
   const { data } = await supabase.auth.getSession();
   const currentUser = data.session?.user;
 
-  if (currentUser && isAllowedAdmin(currentUser.email)) {
+  if (currentUser && (await isAdminUser(currentUser.email))) {
     return {
       user: { id: currentUser.id, email: currentUser.email ?? "" },
       session: data.session,
     };
+  }
+
+  if (currentUser) {
+    await supabase.auth.signOut();
   }
 
   return { user: null, session: null };

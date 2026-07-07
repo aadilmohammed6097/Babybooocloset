@@ -2,15 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
-import { isDevAuthEnabled } from "../../services/authService";
 import styles from "./Login.module.css";
-
-const devEmail = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
 const AdminLogin = () => {
   const { login } = useAdminAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState(isDevAuthEnabled() ? devEmail : "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");

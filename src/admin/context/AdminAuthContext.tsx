@@ -7,7 +7,6 @@ import {
 } from "react";
 import {
   getAdminSession,
-  isAllowedAdmin,
   onAdminAuthChange,
   signInAdmin,
   signOutAdmin,
@@ -30,24 +29,23 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isAdmin = isAllowedAdmin(user?.email);
+  const isAdmin = !!user;
 
   useEffect(() => {
-    getAdminSession().then(({ user: currentUser }) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
+    const initialize = async () => {
+      try {
+        const { user: currentUser } = await getAdminSession();
+        setUser(currentUser);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const { data: listener } = onAdminAuthChange(async (_event, nextSession) => {
-      const nextUser = nextSession?.user ?? null;
-      if (nextUser && !isAllowedAdmin(nextUser.email)) {
-        await signOutAdmin();
-        setUser(null);
-        return;
-      }
-      if (nextUser) {
-        setUser({ id: nextUser.id, email: nextUser.email ?? "" });
-      }
+    void initialize();
+
+    const { data: listener } = onAdminAuthChange(async () => {
+      const { user: currentUser } = await getAdminSession();
+      setUser(currentUser);
     });
 
     return () => listener.subscription.unsubscribe();
