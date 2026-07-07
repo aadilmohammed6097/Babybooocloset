@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { isDevAuthEnabled } from "../../services/authService";
 import styles from "./Login.module.css";
@@ -11,6 +12,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState(isDevAuthEnabled() ? devEmail : "");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,15 +49,25 @@ const AdminLogin = () => {
             autoComplete="username"
             className={styles.input}
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            className={styles.input}
-          />
+          <div className={styles.passwordWrap}>
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className={`${styles.input} ${styles.passwordInput}`}
+            />
+            <button
+              type="button"
+              className={styles.eyeBtn}
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
 
           {error && <p className={styles.error}>{error}</p>}
 
