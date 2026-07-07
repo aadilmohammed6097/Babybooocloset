@@ -1,52 +1,69 @@
 import { supabase } from "../lib/supabase";
 
-export async function uploadProductImage(file: File): Promise<string> {
-  try {
-    if (!file) {
-      throw new Error("No file selected.");
-    }
+const PRODUCTS_BUCKET = "products";
 
-    console.log("Uploading file:", file);
+export function getProductImageStoragePath(productId: string, index: number): string {
+  return `${productId}/${index}.jpg`;
+}
 
-    // Create a unique filename
-    const extension = file.name.split(".").pop();
-    const filename = `${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(2)}.${extension}`;
+export function getStoragePathFromPublicUrl(publicUrl: string): string | null {
+  const marker = `/storage/v1/object/public/${PRODUCTS_BUCKET}/`;
+  const index = publicUrl.indexOf(marker);
+  if (index === -1) return null;
+  return decodeURIComponent(publicUrl.slice(index + marker.length));
+}
 
-    // Upload file
-    const { data, error } = await supabase.storage
-      .from("products")
-      .upload(filename, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+export async function uploadProductImage(
+  productId: string,
+  file: File,
+  index: number
+): Promise<string> {
+  if (!file) {
+    throw new Error("No file selected.");
+  }
 
-    console.log("Upload Response:", data);
-    console.log("Upload Error:", error);
+  const path = getProductImageStoragePath(productId, index);
 
-    if (error) {
-      throw new Error(
-        `Upload failed: ${error.message}\n${JSON.stringify(error, null, 2)}`
-      );
-    }
+  const { error } = await supabase.storage.from(PRODUCTS_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: file.type || "image/jpeg",
+  });
 
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("products").getPublicUrl(filename);
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
 
-    console.log("Public URL:", publicUrl);
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(PRODUCTS_BUCKET).getPublicUrl(path);
 
-    if (!publicUrl) {
-      throw new Error("Failed to generate public URL.");
-    }
+  if (!publicUrl) {
+    throw new Error("Failed to generate public URL.");
+  }
 
-    return publicUrl;
-  } catch (err) {
-    console.error("Storage Upload Error:", err);
-    throw err;
+  return publicUrl;
+}
+
+export async function deleteProductImageFromStorage(publicUrl: string): Promise<void> {
+  const path = getStoragePathFromPublicUrl(publicUrl);
+  if (!path) return;
+
+  const { error } = await supabase.storage.from(PRODUCTS_BUCKET).remove([path]);
+  if (error) {
+    throw new Error(`Failed to delete image: ${error.message}`);
   }
 }
 
-export default uploadProductImage;
+export async function deleteProductImagesFromStorage(publicUrls: string[]): Promise<void> {
+  const paths = publicUrls
+    .map(getStoragePathFromPublicUrl)
+    .filter((path): path is string => Boolean(path));
+
+  if (paths.length === 0) return;
+
+  const { error } = await supabase.storage.from(PRODUCTS_BUCKET).remove(paths);
+  if (error) {
+    throw new Error(`Failed to delete images: ${error.message}`);
+  }
+}

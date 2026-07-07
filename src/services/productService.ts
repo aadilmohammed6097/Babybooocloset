@@ -1,5 +1,17 @@
 import { supabase } from "../lib/supabase";
 import type { Product } from "../types";
+import {
+  getPrimaryImageUrl,
+  getProductImagesByProductIds,
+  sortProductImages,
+} from "./productImageService";
+
+interface ProductImageRow {
+  id: string;
+  image_url: string;
+  display_order: number;
+  is_primary: boolean;
+}
 
 interface ProductRow {
   id: string;
@@ -15,11 +27,15 @@ interface ProductRow {
   age_group?: string | null;
   sizes?: string[] | null;
   categories?: { slug: string; name: string } | { slug: string; name: string }[] | null;
+  product_images?: ProductImageRow[] | null;
 }
 
 const DEFAULT_SIZES = ["One Size"];
 
 const SELECT =
+  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, age_group, sizes, categories ( slug, name ), product_images ( id, image_url, display_order, is_primary )";
+
+const SELECT_WITHOUT_IMAGES =
   "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, age_group, sizes, categories ( slug, name )";
 
 const getCategory = (row: ProductRow) => {
@@ -27,9 +43,43 @@ const getCategory = (row: ProductRow) => {
   return Array.isArray(row.categories) ? row.categories[0] : row.categories;
 };
 
-const mapProduct = (row: ProductRow): Product => {
+const getImageUrls = (row: ProductRow, imageMap?: Record<string, ProductImageRow[]>): string[] => {
+  const nestedImages = sortProductImages(
+    (row.product_images ?? []).map((image) => ({
+      id: image.id,
+      product_id: row.id,
+      image_url: image.image_url,
+      display_order: image.display_order,
+      is_primary: image.is_primary,
+    }))
+  );
+
+  if (nestedImages.length > 0) {
+    return nestedImages.map((image) => image.image_url);
+  }
+
+  const mappedImages = imageMap?.[row.id] ?? [];
+  if (mappedImages.length > 0) {
+    return mappedImages.map((image) => image.image_url);
+  }
+
+  return row.image_url ? [row.image_url] : [];
+};
+
+const mapProduct = (row: ProductRow, imageMap?: Record<string, ProductImageRow[]>): Product => {
   const category = getCategory(row);
-  const image = row.image_url ?? "";
+  const imageUrls = getImageUrls(row, imageMap);
+  const nestedImages = row.product_images ?? imageMap?.[row.id] ?? [];
+  const primaryFromImages = getPrimaryImageUrl(
+    nestedImages.map((image) => ({
+      id: image.id,
+      product_id: row.id,
+      image_url: image.image_url,
+      display_order: image.display_order,
+      is_primary: image.is_primary,
+    }))
+  );
+  const image = primaryFromImages || imageUrls[0] || row.image_url || "";
 
   return {
     id: row.id,
@@ -39,7 +89,7 @@ const mapProduct = (row: ProductRow): Product => {
     salePrice: row.sale_price,
     stock: row.stock,
     image,
-    images: image ? [image] : [],
+    images: imageUrls.length > 0 ? imageUrls : image ? [image] : [],
     category: category?.slug ?? "unisex",
     categoryId: row.category_id ?? undefined,
     ageGroup: (row.age_group ?? "0-3m") as Product["ageGroup"],
@@ -47,6 +97,23 @@ const mapProduct = (row: ProductRow): Product => {
     isFeatured: row.is_featured,
     isNew: row.is_new,
   };
+};
+
+const buildImageMap = async (rows: ProductRow[]): Promise<Record<string, ProductImageRow[]>> => {
+  const productIds = rows.map((row) => row.id);
+  const grouped = await getProductImagesByProductIds(productIds);
+
+  return Object.fromEntries(
+    Object.entries(grouped).map(([productId, images]) => [
+      productId,
+      images.map((image) => ({
+        id: image.id,
+        image_url: image.image_url,
+        display_order: image.display_order,
+        is_primary: image.is_primary,
+      })),
+    ])
+  );
 };
 
 const queryAll = async (select = SELECT): Promise<ProductRow[]> => {
@@ -60,10 +127,18 @@ const queryAll = async (select = SELECT): Promise<ProductRow[]> => {
   return (data ?? []) as unknown as ProductRow[];
 };
 
+const mapRows = async (rows: ProductRow[]): Promise<Product[]> => {
+  const hasNestedImages = rows.some((row) => Array.isArray(row.product_images));
+  const imageMap = hasNestedImages ? undefined : await buildImageMap(rows);
+  return rows.map((row) => mapProduct(row, imageMap));
+};
+
 export async function getProducts(): Promise<Product[]> {
   let rows = await queryAll();
-  if (rows.length === 0) rows = await queryAll("*");
-  return rows.map(mapProduct);
+  if (rows.length === 0) {
+    rows = await queryAll(SELECT_WITHOUT_IMAGES);
+  }
+  return mapRows(rows);
 }
 
 export async function getFeaturedProducts(): Promise<Product[]> {
@@ -74,10 +149,10 @@ export async function getFeaturedProducts(): Promise<Product[]> {
 
   if (error) {
     const all = await getProducts();
-    return all.filter((p) => p.isFeatured);
+    return all.filter((product) => product.isFeatured);
   }
 
-  return ((data ?? []) as unknown as ProductRow[]).map(mapProduct);
+  return mapRows((data ?? []) as unknown as ProductRow[]);
 }
 
 export async function getNewArrivals(): Promise<Product[]> {
@@ -88,10 +163,10 @@ export async function getNewArrivals(): Promise<Product[]> {
 
   if (error) {
     const all = await getProducts();
-    return all.filter((p) => p.isNew);
+    return all.filter((product) => product.isNew);
   }
 
-  return ((data ?? []) as unknown as ProductRow[]).map(mapProduct);
+  return mapRows((data ?? []) as unknown as ProductRow[]);
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
@@ -102,12 +177,14 @@ export async function getProductById(id: string): Promise<Product | null> {
     .maybeSingle();
 
   if (error || !data) {
-    const fallback = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+    const fallback = await supabase.from("products").select(SELECT_WITHOUT_IMAGES).eq("id", id).maybeSingle();
     if (fallback.error || !fallback.data) return null;
-    return mapProduct(fallback.data as unknown as ProductRow);
+    const [product] = await mapRows([fallback.data as unknown as ProductRow]);
+    return product ?? null;
   }
 
-  return mapProduct(data as unknown as ProductRow);
+  const [product] = await mapRows([data as unknown as ProductRow]);
+  return product ?? null;
 }
 
 export async function getRelatedProducts(
@@ -117,9 +194,9 @@ export async function getRelatedProducts(
   const all = await getProducts();
   return all
     .filter(
-      (p) =>
-        p.id !== product.id &&
-        (p.categoryId === product.categoryId || p.category === product.category)
+      (item) =>
+        item.id !== product.id &&
+        (item.categoryId === product.categoryId || item.category === product.category)
     )
     .slice(0, limit);
 }

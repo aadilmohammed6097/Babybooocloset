@@ -1,17 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Category, ProductInput } from "../../../types";
+import { X } from "lucide-react";
+import type { Category, ProductImage, ProductImageSubmitPayload, ProductInput } from "../../../types";
 import { getAdminCategories } from "../../services/adminCategoryService";
+import { MAX_PRODUCT_IMAGES } from "../../../services/productImageService";
 import styles from "../../styles/AdminShared.module.css";
+import imageStyles from "./ProductForm.module.css";
 
 interface ProductFormProps {
   initial?: Partial<ProductInput>;
-  onSubmit: (data: ProductInput, imageFile?: File | null) => Promise<void>;
+  initialImages?: ProductImage[];
+  onSubmit: (data: ProductInput, imagePayload: ProductImageSubmitPayload) => Promise<void>;
   submitLabel: string;
   uploading?: boolean;
 }
 
 const ageGroups = ["0-3m", "3-6m", "6-12m", "12-24m"] as const;
+
+const EMPTY_PRODUCT_IMAGES: ProductImage[] = [];
 
 const defaultValues: ProductInput = {
   name: "",
@@ -19,33 +25,60 @@ const defaultValues: ProductInput = {
   price: 0,
   sale_price: null,
   stock: 0,
-  image_url: "",
   featured: false,
   new_arrival: false,
   age_group: "0-3m",
   category_id: "",
 };
 
-const ProductForm = ({ initial, onSubmit, submitLabel, uploading }: ProductFormProps) => {
+const ProductForm = ({
+  initial,
+  initialImages = EMPTY_PRODUCT_IMAGES,
+  onSubmit,
+  submitLabel,
+  uploading,
+}: ProductFormProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<ProductInput>({ ...defaultValues, ...initial });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>(form.image_url || "");
+  const [existingImages, setExistingImages] = useState<ProductImage[]>(initialImages);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newPreviews, setNewPreviews] = useState<string[]>([]);
 
   useEffect(() => {
     getAdminCategories().then(setCategories);
   }, []);
 
   useEffect(() => {
-    if (initial) setForm({ ...defaultValues, ...initial });
+    if (!initial) return;
+    setForm({ ...defaultValues, ...initial });
   }, [initial]);
 
   useEffect(() => {
-    // keep preview in sync with initial value
-    setPreviewUrl(form.image_url || "");
-  }, [form.image_url]);
+    setExistingImages(initialImages);
+    setDeletedImageIds([]);
+    setNewFiles([]);
+    setNewPreviews((prev) => {
+      prev.forEach((preview) => URL.revokeObjectURL(preview));
+      return [];
+    });
+  }, [initialImages]);
+
+  useEffect(() => {
+    return () => {
+      newPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    };
+  }, [newPreviews]);
+
+  const visibleExistingImages = useMemo(
+    () => existingImages.filter((image) => !deletedImageIds.includes(image.id)),
+    [existingImages, deletedImageIds]
+  );
+
+  const totalImageCount = visibleExistingImages.length + newFiles.length;
+  const remainingSlots = MAX_PRODUCT_IMAGES - totalImageCount;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -66,12 +99,59 @@ const ProductForm = ({ initial, onSubmit, submitLabel, uploading }: ProductFormP
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (files.length === 0) return;
+
+    const allowedCount = Math.min(files.length, remainingSlots);
+    if (allowedCount === 0) {
+      setError(`You can upload a maximum of ${MAX_PRODUCT_IMAGES} images.`);
+      return;
+    }
+
+    const nextFiles = files.slice(0, allowedCount);
+    const nextPreviews = nextFiles.map((file) => URL.createObjectURL(file));
+
     setError("");
+    setNewFiles((prev) => [...prev, ...nextFiles]);
+    setNewPreviews((prev) => [...prev, ...nextPreviews]);
+  };
+
+  const removeExistingImage = (imageId: string) => {
+    setDeletedImageIds((prev) => [...prev, imageId]);
+    setError("");
+  };
+
+  const removeNewImage = (index: number) => {
+    setNewFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+    setNewPreviews((prev) => {
+      const next = [...prev];
+      const [removedPreview] = next.splice(index, 1);
+      if (removedPreview) {
+        URL.revokeObjectURL(removedPreview);
+      }
+      return next;
+    });
+    setError("");
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+
+    if (totalImageCount === 0) {
+      setError("Please upload at least one product image.");
+      return;
+    }
+
     setSaving(true);
     try {
-      await onSubmit(form, selectedFile ?? null);
+      await onSubmit(form, {
+        newFiles,
+        deletedImageIds,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save product");
     } finally {
@@ -129,33 +209,56 @@ const ProductForm = ({ initial, onSubmit, submitLabel, uploading }: ProductFormP
         </div>
       </div>
 
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="image_file">Product Image</label>
+      <div className={`${styles.field} ${imageStyles.imageField}`}>
+        <label className={styles.label} htmlFor="image_files">Product Images</label>
+        <p className={imageStyles.imageHint}>
+          Upload up to {MAX_PRODUCT_IMAGES} images. The first image is used as the primary image.
+          {remainingSlots > 0 ? ` ${remainingSlots} slot${remainingSlots === 1 ? "" : "s"} remaining.` : ""}
+        </p>
         <input
-          id="image_file"
-          name="image_file"
+          id="image_files"
+          name="image_files"
           type="file"
           accept="image/*"
-          onChange={(e) => {
-            const file = (e.target as HTMLInputElement).files?.[0] ?? null;
-            if (file) {
-              setSelectedFile(file);
-              const url = URL.createObjectURL(file);
-              setPreviewUrl(url);
-              // keep form.image_url as preview for UI consistency
-              setForm((prev) => ({ ...prev, image_url: url }));
-            } else {
-              setSelectedFile(null);
-              setPreviewUrl("");
-              setForm((prev) => ({ ...prev, image_url: "" }));
-            }
-          }}
-          className={styles.input}
+          multiple
+          disabled={remainingSlots === 0}
+          onChange={handleImageSelection}
+          className={`${styles.input} ${imageStyles.imageInput}`}
         />
 
-        {previewUrl && (
-          <div style={{ marginTop: 8 }}>
-            <img src={previewUrl} alt="Preview" style={{ maxWidth: 200, borderRadius: 8 }} />
+        {totalImageCount > 0 && (
+          <div className={imageStyles.imageGrid}>
+            {visibleExistingImages.map((image, index) => (
+              <div key={image.id} className={imageStyles.imagePreview}>
+                <img src={image.image_url} alt={`Product image ${index + 1}`} />
+                {index === 0 && <span className={imageStyles.primaryBadge}>Primary</span>}
+                <button
+                  type="button"
+                  className={imageStyles.removeImageBtn}
+                  onClick={() => removeExistingImage(image.id)}
+                  aria-label={`Remove image ${index + 1}`}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+
+            {newPreviews.map((preview, index) => (
+              <div key={preview} className={imageStyles.imagePreview}>
+                <img src={preview} alt={`New product image ${index + 1}`} />
+                {visibleExistingImages.length === 0 && index === 0 && (
+                  <span className={imageStyles.primaryBadge}>Primary</span>
+                )}
+                <button
+                  type="button"
+                  className={imageStyles.removeImageBtn}
+                  onClick={() => removeNewImage(index)}
+                  aria-label={`Remove new image ${index + 1}`}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

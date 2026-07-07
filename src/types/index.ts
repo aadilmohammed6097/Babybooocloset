@@ -153,6 +153,25 @@ export interface User {
   email: string;
 }
 
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  image_url: string;
+  display_order: number;
+  is_primary: boolean;
+}
+
+export interface ProductImageInput {
+  image_url: string;
+  display_order: number;
+  is_primary: boolean;
+}
+
+export interface ProductImageSubmitPayload {
+  newFiles: File[];
+  deletedImageIds: string[];
+}
+
 export interface AdminProduct {
   id: string;
   name: string;
@@ -161,6 +180,7 @@ export interface AdminProduct {
   sale_price: number | null;
   stock: number;
   image_url: string;
+  images: ProductImage[];
   featured: boolean;
   new_arrival: boolean;
   age_group: AgeGroup;
@@ -174,7 +194,6 @@ export interface ProductInput {
   price: number;
   sale_price: number | null;
   stock: number;
-  image_url: string;
   featured: boolean;
   new_arrival: boolean;
   age_group: AgeGroup;
