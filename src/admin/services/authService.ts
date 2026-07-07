@@ -5,18 +5,18 @@ export interface AdminUser {
   email: string;
 }
 
-const isAdminUser = async (email: string | undefined): Promise<boolean> => {
-  if (!email) return false;
+const isAdminUser = async (userId: string | undefined): Promise<boolean> => {
+  if (!userId) return false;
 
-  const normalizedEmail = email.trim().toLowerCase();
   const { data, error } = await supabase
     .from("admin_users")
     .select("id")
-    .ilike("email", normalizedEmail)
+    .eq("id", userId)
     .maybeSingle();
 
   if (error) {
-    throw new Error("Unable to verify admin access.");
+    console.error(error);
+    throw error;
   }
 
   return !!data;
@@ -30,7 +30,7 @@ export const signInAdmin = async (email: string, password: string) => {
 
   if (error) throw error;
 
-  const authorized = await isAdminUser(data.user?.email);
+  const authorized = await isAdminUser(data.user?.id);
   if (!authorized) {
     await supabase.auth.signOut();
     throw new Error("Unauthorized");
@@ -56,7 +56,7 @@ export const getAdminSession = async (): Promise<{
   const { data } = await supabase.auth.getSession();
   const currentUser = data.session?.user;
 
-  if (currentUser && (await isAdminUser(currentUser.email))) {
+  if (currentUser && (await isAdminUser(currentUser.id))) {
     return {
       user: { id: currentUser.id, email: currentUser.email ?? "" },
       session: data.session,
