@@ -44,7 +44,7 @@ const Navbar = () => {
           <Link to="/login" className={styles.actionBtn} aria-label="Profile">
             <User size={20} />
           </Link>
-          <Link to="/cart" className={`${styles.actionBtn} ${styles.cart}`}>
+          <Link to="/cart" className={`${styles.actionBtn} ${styles.cart}`} aria-label="Cart">
             <ShoppingBag size={20} />
             {totalItems > 0 && (
               <span className={styles.badge}>{totalItems}</span>
@@ -52,13 +52,26 @@ const Navbar = () => {
           </Link>
         </div>
 
-        <button
-          className={styles.mobileButton}
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className={styles.mobileHeaderActions}>
+          <Link
+            to="/cart"
+            className={`${styles.actionBtn} ${styles.cart} ${styles.mobileCart}`}
+            aria-label="Cart"
+          >
+            <ShoppingBag size={20} />
+            {totalItems > 0 && (
+              <span className={styles.badge}>{totalItems}</span>
+            )}
+          </Link>
+
+          <button
+            className={styles.mobileButton}
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (
@@ -94,10 +107,14 @@ const Navbar = () => {
             </Link>
             <Link
               to="/cart"
-              className={styles.actionBtn}
+              className={`${styles.actionBtn} ${styles.cart}`}
               onClick={() => setMobileOpen(false)}
+              aria-label="Cart"
             >
               <ShoppingBag size={20} />
+              {totalItems > 0 && (
+                <span className={styles.badge}>{totalItems}</span>
+              )}
             </Link>
           </div>
         </div>

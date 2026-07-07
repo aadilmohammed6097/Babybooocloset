@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Heart, ShoppingBag } from "lucide-react";
 import type { Product } from "../../types";
 import { formatPrice } from "../../utils/formatPrice";
@@ -15,10 +16,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const wishlisted = isWishlisted(product.id);
+  const [added, setAdded] = useState(false);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     addToCart(product, product.sizes[0], 1);
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 2000);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
@@ -60,7 +64,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           className={styles.addButton}
         >
           <ShoppingBag size={16} />
-          Add to Cart
+          {added ? "Added!" : "Add to Cart"}
         </Button>
       </div>
     </article>

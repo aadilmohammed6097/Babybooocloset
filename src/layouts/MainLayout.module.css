@@ -1,0 +1,13 @@
+.main {
+  min-height: 100%;
+}
+
+.mainWithCartBar {
+  padding-bottom: 88px;
+}
+
+@media (min-width: 993px) {
+  .mainWithCartBar {
+    padding-bottom: 0;
+  }
+}
