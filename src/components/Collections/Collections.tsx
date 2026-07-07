@@ -3,6 +3,28 @@ import { useEffect, useState } from "react";
 import { getCategories } from "../../services/categoryService";
 import type { Category } from "../../types";
 import styles from "./Collections.module.css";
+import babyBoyCover from "../../assets/babyboy-babyfits.jpg";
+import babyGirlCover from "../../assets/babygirl-babyfits.jpg";
+import newbornCover from "../../assets/newbornessentials-babyfits.jpg";
+import unisexCover from "../../assets/unisex-babyfits.jpg";
+
+const coverImages: Record<string, string> = {
+  boys: babyBoyCover,
+  babyboy: babyBoyCover,
+  "baby-boy": babyBoyCover,
+  girls: babyGirlCover,
+  babygirl: babyGirlCover,
+  "baby-girl": babyGirlCover,
+  "newbornessentials": newbornCover,
+  "newborn-essentials": newbornCover,
+  "newborn essentials": newbornCover,
+  unisex: unisexCover,
+};
+
+const getCoverImage = (slug: string, fallback: string) => {
+  const normalized = slug.trim().toLowerCase();
+  return coverImages[normalized] ?? fallback;
+};
 
 const Collections = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -24,7 +46,7 @@ const Collections = () => {
             >
               <div className={styles.imageWrapper}>
                 <img
-                  src={category.image}
+                  src={getCoverImage(category.slug, category.image)}
                   alt={category.title}
                   className={styles.image}
                   loading="lazy"

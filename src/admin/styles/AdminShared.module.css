@@ -88,6 +88,24 @@
   gap: 8px;
 }
 
+.checkboxCell {
+  width: 44px;
+  padding-right: 8px;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  accent-color: #a67c52;
+  cursor: pointer;
+}
+
+.selectionSummary {
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+  color: #666;
+}
+
 .btn {
   padding: 8px 16px;
   border-radius: 8px;

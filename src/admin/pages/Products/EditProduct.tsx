@@ -28,6 +28,7 @@ const EditProduct = () => {
           image_url: product.image_url,
           featured: product.featured,
           new_arrival: product.new_arrival,
+          age_group: product.age_group,
           category_id: product.category_id ?? "",
         });
       }

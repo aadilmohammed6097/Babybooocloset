@@ -2,11 +2,16 @@ import { supabase } from "../../lib/supabase";
 import type { AdminProduct, ProductInput } from "../../types";
 
 const SELECT =
-  "id, name, description, price, sale_price, stock, image_url, featured, new_arrival, category_id, categories ( name )";
+  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, age_group, category_id, categories ( name )";
 
 const mapAdminProduct = (row: Record<string, unknown>): AdminProduct => {
   const categories = row.categories as { name: string } | { name: string }[] | null;
   const category = Array.isArray(categories) ? categories[0] : categories;
+  const rawAgeGroup = (row.age_group as string) ?? "0-3m";
+  const validAgeGroups = ["0-3m", "3-6m", "6-12m", "12-24m"] as const;
+  const age_group = validAgeGroups.includes(rawAgeGroup as any)
+    ? (rawAgeGroup as typeof validAgeGroups[number])
+    : "0-3m";
 
   return {
     id: row.id as string,
@@ -16,8 +21,9 @@ const mapAdminProduct = (row: Record<string, unknown>): AdminProduct => {
     sale_price: row.sale_price != null ? Number(row.sale_price) : null,
     stock: Number(row.stock ?? 0),
     image_url: (row.image_url as string) ?? "",
-    featured: Boolean(row.featured),
-    new_arrival: Boolean(row.new_arrival),
+    featured: Boolean(row.is_featured),
+    new_arrival: Boolean(row.is_new),
+    age_group,
     category_id: (row.category_id as string) ?? null,
     category_name: category?.name,
   };
@@ -57,9 +63,19 @@ export async function getAdminProductById(id: string): Promise<AdminProduct | nu
 }
 
 export async function createProduct(input: ProductInput): Promise<AdminProduct> {
+  const payload = {
+    ...input,
+    is_featured: input.featured,
+    is_new: input.new_arrival,
+  } as any;
+
+  // remove the client-side keys so only the DB column names are sent
+  delete (payload as any).featured;
+  delete (payload as any).new_arrival;
+
   const { data, error } = await supabase
     .from("products")
-    .insert(input)
+    .insert(payload)
     .select("*")
     .single();
 
@@ -71,9 +87,15 @@ export async function updateProduct(
   id: string,
   input: Partial<ProductInput>
 ): Promise<AdminProduct> {
+  const payload: any = { ...input };
+  if (typeof input.featured !== "undefined") payload.is_featured = input.featured;
+  if (typeof input.new_arrival !== "undefined") payload.is_new = input.new_arrival;
+  delete payload.featured;
+  delete payload.new_arrival;
+
   const { data, error } = await supabase
     .from("products")
-    .update(input)
+    .update(payload)
     .eq("id", id)
     .select("*")
     .single();
@@ -93,11 +115,11 @@ export async function getDashboardStats() {
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
-      .eq("featured", true),
+      .eq("is_featured", true),
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
-      .eq("new_arrival", true),
+      .eq("is_new", true),
   ]);
 
   return {

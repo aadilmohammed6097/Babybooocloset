@@ -6,9 +6,12 @@ import styles from "../../styles/AdminShared.module.css";
 
 interface ProductFormProps {
   initial?: Partial<ProductInput>;
-  onSubmit: (data: ProductInput) => Promise<void>;
+  onSubmit: (data: ProductInput, imageFile?: File | null) => Promise<void>;
   submitLabel: string;
+  uploading?: boolean;
 }
+
+const ageGroups = ["0-3m", "3-6m", "6-12m", "12-24m"] as const;
 
 const defaultValues: ProductInput = {
   name: "",
@@ -19,14 +22,17 @@ const defaultValues: ProductInput = {
   image_url: "",
   featured: false,
   new_arrival: false,
+  age_group: "0-3m",
   category_id: "",
 };
 
-const ProductForm = ({ initial, onSubmit, submitLabel }: ProductFormProps) => {
+const ProductForm = ({ initial, onSubmit, submitLabel, uploading }: ProductFormProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<ProductInput>({ ...defaultValues, ...initial });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>(form.image_url || "");
 
   useEffect(() => {
     getAdminCategories().then(setCategories);
@@ -35,6 +41,11 @@ const ProductForm = ({ initial, onSubmit, submitLabel }: ProductFormProps) => {
   useEffect(() => {
     if (initial) setForm({ ...defaultValues, ...initial });
   }, [initial]);
+
+  useEffect(() => {
+    // keep preview in sync with initial value
+    setPreviewUrl(form.image_url || "");
+  }, [form.image_url]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -60,7 +71,7 @@ const ProductForm = ({ initial, onSubmit, submitLabel }: ProductFormProps) => {
     setError("");
     setSaving(true);
     try {
-      await onSubmit(form);
+      await onSubmit(form, selectedFile ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save product");
     } finally {
@@ -107,11 +118,46 @@ const ProductForm = ({ initial, onSubmit, submitLabel }: ProductFormProps) => {
             ))}
           </select>
         </div>
+
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="age_group">Age Group</label>
+          <select id="age_group" name="age_group" value={form.age_group} onChange={handleChange} required className={styles.select}>
+            {ageGroups.map((group) => (
+              <option key={group} value={group}>{group}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor="image_url">Image URL</label>
-        <input id="image_url" name="image_url" value={form.image_url} onChange={handleChange} className={styles.input} placeholder="https://..." />
+        <label className={styles.label} htmlFor="image_file">Product Image</label>
+        <input
+          id="image_file"
+          name="image_file"
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = (e.target as HTMLInputElement).files?.[0] ?? null;
+            if (file) {
+              setSelectedFile(file);
+              const url = URL.createObjectURL(file);
+              setPreviewUrl(url);
+              // keep form.image_url as preview for UI consistency
+              setForm((prev) => ({ ...prev, image_url: url }));
+            } else {
+              setSelectedFile(null);
+              setPreviewUrl("");
+              setForm((prev) => ({ ...prev, image_url: "" }));
+            }
+          }}
+          className={styles.input}
+        />
+
+        {previewUrl && (
+          <div style={{ marginTop: 8 }}>
+            <img src={previewUrl} alt="Preview" style={{ maxWidth: 200, borderRadius: 8 }} />
+          </div>
+        )}
       </div>
 
       <label className={styles.checkboxRow}>
@@ -125,8 +171,8 @@ const ProductForm = ({ initial, onSubmit, submitLabel }: ProductFormProps) => {
       </label>
 
       <div className={styles.formActions}>
-        <button type="submit" className={styles.btnPrimary} disabled={saving}>
-          {saving ? "Saving..." : submitLabel}
+        <button type="submit" className={styles.btnPrimary} disabled={saving || uploading}>
+          {saving ? "Saving..." : uploading ? "Uploading..." : submitLabel}
         </button>
         <Link to="/admin/products" className={styles.btnOutline}>Cancel</Link>
       </div>

@@ -1,40 +1,106 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CreditCard, Truck } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { formatPrice } from "../../utils/formatPrice";
+import { placeOrder } from "../../services/orderService";
 import Button from "../../components/Button/Button";
-import Modal from "../../components/Modal/Modal";
 import Footer from "../../components/footer/Footer";
 import styles from "./Checkout.module.css";
+
+interface CheckoutFormState {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  shippingMethod: "Standard" | "Express";
+  paymentMethod: "COD" | "Razorpay";
+}
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("card");
-
-  const [form, setForm] = useState({
-    fullName: "",
+  const [form, setForm] = useState<CheckoutFormState>({
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
-    address: "",
+    addressLine1: "",
+    addressLine2: "",
     city: "",
     state: "",
-    zipCode: "",
+    postalCode: "",
+    country: "",
+    shippingMethod: "Standard",
+    paymentMethod: "COD",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const shippingCharge = form.shippingMethod === "Express" ? 199 : 0;
+  const discount = 0;
+  const tax = Math.round((totalPrice + shippingCharge - discount) * 0.05);
+  const totalAmount = totalPrice + shippingCharge - discount + tax;
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearCart();
-    setShowSuccess(true);
+    setError("");
+
+    if (items.length === 0) {
+      setError("Your cart is empty.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const createdOrder = await placeOrder(
+        {
+          user_id: null,
+          email: form.email,
+          phone: form.phone,
+          first_name: form.firstName,
+          last_name: form.lastName,
+          address_line1: form.addressLine1,
+          address_line2: form.addressLine2,
+          city: form.city,
+          state: form.state,
+          postal_code: form.postalCode,
+          country: form.country,
+          shipping_method: form.shippingMethod,
+          shipping_charge: shippingCharge,
+          subtotal: totalPrice,
+          discount,
+          tax,
+          total_amount: totalAmount,
+          payment_method: form.paymentMethod,
+        },
+        items
+      );
+
+      clearCart();
+      navigate(`/checkout/success?orderNumber=${createdOrder.order_number}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to place order.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (items.length === 0 && !showSuccess) {
+  if (items.length === 0) {
     return (
       <>
         <div className={styles.empty}>
@@ -49,176 +115,209 @@ const Checkout = () => {
   }
 
   return (
-    <>
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <h1 className={styles.title}>Checkout</h1>
+    <div className={styles.page}>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Checkout</h1>
 
-          <form className={styles.layout} onSubmit={handleSubmit}>
-            <div className={styles.forms}>
-              <section className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <Truck size={20} />
-                  <h2>Shipping Address</h2>
-                </div>
-                <div className={styles.formGrid}>
-                  <input
-                    name="fullName"
-                    placeholder="Full Name"
-                    value={form.fullName}
-                    onChange={handleChange}
-                    required
-                    className={styles.input}
-                  />
-                  <input
-                    name="email"
-                    type="email"
-                    placeholder="Email"
-                    value={form.email}
-                    onChange={handleChange}
-                    required
-                    className={styles.input}
-                  />
-                  <input
-                    name="phone"
-                    placeholder="Phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    required
-                    className={styles.input}
-                  />
-                  <input
-                    name="address"
-                    placeholder="Street Address"
-                    value={form.address}
-                    onChange={handleChange}
-                    required
-                    className={`${styles.input} ${styles.fullWidth}`}
-                  />
-                  <input
-                    name="city"
-                    placeholder="City"
-                    value={form.city}
-                    onChange={handleChange}
-                    required
-                    className={styles.input}
-                  />
-                  <input
-                    name="state"
-                    placeholder="State"
-                    value={form.state}
-                    onChange={handleChange}
-                    required
-                    className={styles.input}
-                  />
-                  <input
-                    name="zipCode"
-                    placeholder="ZIP Code"
-                    value={form.zipCode}
-                    onChange={handleChange}
-                    required
-                    className={styles.input}
-                  />
-                </div>
-              </section>
+        <form className={styles.layout} onSubmit={handleSubmit}>
+          <div className={styles.forms}>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <Truck size={20} />
+                <h2>Shipping Address</h2>
+              </div>
+              <div className={styles.formGrid}>
+                <input
+                  name="firstName"
+                  placeholder="First Name"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="phone"
+                  placeholder="Phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="addressLine1"
+                  placeholder="Address Line 1"
+                  value={form.addressLine1}
+                  onChange={handleChange}
+                  required
+                  className={`${styles.input} ${styles.fullWidth}`}
+                />
+                <input
+                  name="addressLine2"
+                  placeholder="Address Line 2"
+                  value={form.addressLine2}
+                  onChange={handleChange}
+                  className={`${styles.input} ${styles.fullWidth}`}
+                />
+                <input
+                  name="city"
+                  placeholder="City"
+                  value={form.city}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="state"
+                  placeholder="State"
+                  value={form.state}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="postalCode"
+                  placeholder="Postal Code"
+                  value={form.postalCode}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+                <input
+                  name="country"
+                  placeholder="Country"
+                  value={form.country}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+              </div>
+            </section>
 
-              <section className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <CreditCard size={20} />
-                  <h2>Payment Method</h2>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <CreditCard size={20} />
+                <h2>Payment Method</h2>
+              </div>
+              <div className={styles.paymentOptions}>
+                <label className={styles.paymentOption}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="COD"
+                    checked={form.paymentMethod === "COD"}
+                    onChange={handleChange}
+                  />
+                  Cash on Delivery
+                </label>
+                <label className={styles.paymentOption}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="Razorpay"
+                    checked={form.paymentMethod === "Razorpay"}
+                    onChange={handleChange}
+                  />
+                  Razorpay
+                </label>
+              </div>
+
+              <div className={styles.sectionHeader} style={{ marginTop: 24 }}>
+                <h2>Shipping Method</h2>
+              </div>
+              <div className={styles.paymentOptions}>
+                <label className={styles.paymentOption}>
+                  <input
+                    type="radio"
+                    name="shippingMethod"
+                    value="Standard"
+                    checked={form.shippingMethod === "Standard"}
+                    onChange={handleChange}
+                  />
+                  Standard Shipping (Free)
+                </label>
+                <label className={styles.paymentOption}>
+                  <input
+                    type="radio"
+                    name="shippingMethod"
+                    value="Express"
+                    checked={form.shippingMethod === "Express"}
+                    onChange={handleChange}
+                  />
+                  Express Shipping (₹199)
+                </label>
+              </div>
+            </section>
+          </div>
+
+          <aside className={styles.summary}>
+            <h2 className={styles.summaryTitle}>Order Summary</h2>
+            <div className={styles.items}>
+              {items.map((item) => (
+                <div
+                  key={`${item.product.id}-${item.size}`}
+                  className={styles.summaryItem}
+                >
+                  <img src={item.product.image} alt={item.product.name} />
+                  <div>
+                    <p className={styles.itemName}>{item.product.name}</p>
+                    <p className={styles.itemMeta}>
+                      {item.size} × {item.quantity}
+                    </p>
+                  </div>
+                  <span>
+                    {formatPrice(item.product.price * item.quantity)}
+                  </span>
                 </div>
-                <div className={styles.paymentOptions}>
-                  <label className={styles.paymentOption}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="card"
-                      checked={paymentMethod === "card"}
-                      onChange={() => setPaymentMethod("card")}
-                    />
-                    Credit / Debit Card
-                  </label>
-                  <label className={styles.paymentOption}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="paypal"
-                      checked={paymentMethod === "paypal"}
-                      onChange={() => setPaymentMethod("paypal")}
-                    />
-                    PayPal
-                  </label>
-                </div>
-              </section>
+              ))}
+            </div>
+            <div className={styles.summaryRow}>
+              <span>Subtotal</span>
+              <span>{formatPrice(totalPrice)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span>Discount</span>
+              <span>{formatPrice(discount)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span>Shipping</span>
+              <span>{shippingCharge === 0 ? "Free" : formatPrice(shippingCharge)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span>Tax</span>
+              <span>{formatPrice(tax)}</span>
+            </div>
+            <div className={`${styles.summaryRow} ${styles.total}`}>
+              <span>Total</span>
+              <span>{formatPrice(totalAmount)}</span>
             </div>
 
-            <aside className={styles.summary}>
-              <h2 className={styles.summaryTitle}>Order Summary</h2>
-              <div className={styles.items}>
-                {items.map((item) => (
-                  <div
-                    key={`${item.product.id}-${item.size}`}
-                    className={styles.summaryItem}
-                  >
-                    <img src={item.product.image} alt={item.product.name} />
-                    <div>
-                      <p className={styles.itemName}>{item.product.name}</p>
-                      <p className={styles.itemMeta}>
-                        {item.size} × {item.quantity}
-                      </p>
-                    </div>
-                    <span>
-                      {formatPrice(item.product.price * item.quantity)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Subtotal</span>
-                <span>{formatPrice(totalPrice)}</span>
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Shipping</span>
-                <span>Free</span>
-              </div>
-              <div className={`${styles.summaryRow} ${styles.total}`}>
-                <span>Total</span>
-                <span>{formatPrice(totalPrice)}</span>
-              </div>
-              <Button type="submit" variant="primary" size="lg" fullWidth>
-                Place Order
-              </Button>
-            </aside>
-          </form>
-        </div>
+            {error && <p className={styles.error}>{error}</p>}
+
+            <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading}>
+              {loading ? "Placing Order..." : "Place Order"}
+            </Button>
+          </aside>
+        </form>
       </div>
-
-      <Modal
-        isOpen={showSuccess}
-        onClose={() => {
-          setShowSuccess(false);
-          navigate("/orders");
-        }}
-        title="Order Placed!"
-      >
-        <p className={styles.successText}>
-          Thank you for your order! You will receive a confirmation email
-          shortly.
-        </p>
-        <Button
-          variant="primary"
-          fullWidth
-          onClick={() => {
-            setShowSuccess(false);
-            navigate("/orders");
-          }}
-        >
-          View Orders
-        </Button>
-      </Modal>
-
       <Footer />
-    </>
+    </div>
   );
 };
 

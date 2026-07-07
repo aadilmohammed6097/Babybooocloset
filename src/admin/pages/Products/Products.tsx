@@ -14,6 +14,7 @@ const Products = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -35,14 +36,45 @@ const Products = () => {
     try {
       await deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      setSelectedProductIds((prev) => prev.filter((productId) => productId !== id));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete");
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedProductIds.length === 0) return;
+    if (!confirm(`Delete ${selectedProductIds.length} selected product(s)?`)) return;
+
+    const idsToDelete = [...selectedProductIds];
+
+    try {
+      await Promise.all(idsToDelete.map((id) => deleteProduct(id)));
+      setProducts((prev) => prev.filter((product) => !idsToDelete.includes(product.id)));
+      setSelectedProductIds([]);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete selected products");
     }
   };
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const toggleProductSelection = (id: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((productId) => productId !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const visibleIds = filtered.map((product) => product.id);
+    const allVisibleSelected = visibleIds.every((id) => selectedProductIds.includes(id));
+
+    setSelectedProductIds((prev) =>
+      allVisibleSelected ? prev.filter((id) => !visibleIds.includes(id)) : [...new Set([...prev, ...visibleIds])]
+    );
+  };
 
   if (loading) return <Loader />;
 
@@ -58,6 +90,15 @@ const Products = () => {
             onChange={(e) => setSearch(e.target.value)}
             className={styles.search}
           />
+          <button
+            type="button"
+            className={`${styles.btnDanger} ${styles.btnSm}`}
+            onClick={handleDeleteSelected}
+            disabled={selectedProductIds.length === 0}
+            style={{ opacity: selectedProductIds.length === 0 ? 0.6 : 1 }}
+          >
+            Delete Selected
+          </button>
           <Link to="/admin/products/add" className={styles.btnPrimary}>
             Add Product
           </Link>
@@ -67,6 +108,10 @@ const Products = () => {
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.card}>
+        {selectedProductIds.length > 0 && (
+          <p className={styles.selectionSummary}>{selectedProductIds.length} product(s) selected</p>
+        )}
+
         {filtered.length === 0 ? (
           <p className={styles.empty}>No products found.</p>
         ) : (
@@ -74,6 +119,14 @@ const Products = () => {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th className={styles.checkboxCell}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkboxInput}
+                      checked={filtered.length > 0 && filtered.every((product) => selectedProductIds.includes(product.id))}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th>Image</th>
                   <th>Name</th>
                   <th>Category</th>
@@ -86,6 +139,14 @@ const Products = () => {
               <tbody>
                 {filtered.map((product) => (
                   <tr key={product.id}>
+                    <td className={styles.checkboxCell}>
+                      <input
+                        type="checkbox"
+                        className={styles.checkboxInput}
+                        checked={selectedProductIds.includes(product.id)}
+                        onChange={() => toggleProductSelection(product.id)}
+                      />
+                    </td>
                     <td>
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.name} className={styles.thumb} />

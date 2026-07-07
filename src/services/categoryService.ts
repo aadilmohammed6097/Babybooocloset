@@ -1,6 +1,5 @@
 import { supabase } from "../lib/supabase";
 import type { Category } from "../types";
-import { categories as fallbackCategories } from "./mockData";
 
 interface CategoryRow {
   id: string;
@@ -10,14 +9,13 @@ interface CategoryRow {
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, image_url")
-    .order("name");
+const { data, error } = await supabase
+  .from("categories")
+  .select("id, name, slug, image_url");
 
   if (error) {
     console.error("Failed to fetch categories:", error.message);
-    return fallbackCategories;
+    return [];
   }
 
   return (data as CategoryRow[]).map((row) => ({

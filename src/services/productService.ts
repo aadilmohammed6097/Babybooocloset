@@ -9,8 +9,8 @@ interface ProductRow {
   sale_price: number | null;
   stock: number;
   image_url: string | null;
-  featured: boolean;
-  new_arrival: boolean;
+  is_featured: boolean;
+  is_new: boolean;
   category_id: string | null;
   age_group?: string | null;
   sizes?: string[] | null;
@@ -20,7 +20,7 @@ interface ProductRow {
 const DEFAULT_SIZES = ["One Size"];
 
 const SELECT =
-  "id, name, description, price, sale_price, stock, image_url, featured, new_arrival, category_id, age_group, sizes, categories ( slug, name )";
+  "id, name, description, price, sale_price, stock, image_url, is_featured, is_new, category_id, age_group, sizes, categories ( slug, name )";
 
 const getCategory = (row: ProductRow) => {
   if (!row.categories) return null;
@@ -44,8 +44,8 @@ const mapProduct = (row: ProductRow): Product => {
     categoryId: row.category_id ?? undefined,
     ageGroup: (row.age_group ?? "0-3m") as Product["ageGroup"],
     sizes: row.sizes?.length ? row.sizes : DEFAULT_SIZES,
-    isFeatured: row.featured,
-    isNew: row.new_arrival,
+    isFeatured: row.is_featured,
+    isNew: row.is_new,
   };
 };
 
@@ -70,7 +70,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select(SELECT)
-    .eq("featured", true);
+    .eq("is_featured", true);
 
   if (error) {
     const all = await getProducts();
@@ -84,7 +84,7 @@ export async function getNewArrivals(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select(SELECT)
-    .eq("new_arrival", true);
+    .eq("is_new", true);
 
   if (error) {
     const all = await getProducts();
