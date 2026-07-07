@@ -5,32 +5,34 @@ export interface AdminUser {
   email: string;
 }
 
-const isAdminUser = async (userId: string | undefined): Promise<boolean> => {
-  if (!userId) return false;
+const isAdminUser = async (userId: string |undefined) => {
+  console.log("Checking admin id:", userId);
 
   const { data, error } = await supabase
     .from("admin_users")
-    .select("id")
+    .select("*")
     .eq("id", userId)
     .maybeSingle();
 
-  if (error) {
-    console.error(error);
-    throw error;
-  }
+  console.log("Returned Data:", data);
+  console.log("Returned Error:", error);
+
+  if (error) throw error;
 
   return !!data;
 };
-
 export const signInAdmin = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
+  console.log("Logged in User ID:", data.user?.id);
+  console.log("Logged in Email:", data.user?.email);
 
   if (error) throw error;
 
   const authorized = await isAdminUser(data.user?.id);
+  console.log("Is Admin:", authorized);
   if (!authorized) {
     await supabase.auth.signOut();
     throw new Error("Unauthorized");
