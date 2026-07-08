@@ -6,6 +6,8 @@ import Button from "../../components/Button/Button";
 import Footer from "../../components/footer/Footer";
 import styles from "./Cart.module.css";
 
+const SHIPPING_CHARGE = 60;
+
 const Cart = () => {
   const { items, updateQuantity, removeFromCart, totalPrice } = useCart();
 
@@ -116,11 +118,11 @@ const Cart = () => {
               </div>
               <div className={styles.summaryRow}>
                 <span>Shipping</span>
-                <span>Free</span>
+                <span>{formatPrice(SHIPPING_CHARGE)}</span>
               </div>
               <div className={`${styles.summaryRow} ${styles.total}`}>
                 <span>Total</span>
-                <span>{formatPrice(totalPrice)}</span>
+                <span>{formatPrice(totalPrice + SHIPPING_CHARGE)}</span>
               </div>
               <Link to="/checkout">
                 <Button variant="primary" size="lg" fullWidth>

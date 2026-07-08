@@ -96,6 +96,17 @@
   border-color: var(--color-primary);
 }
 
+.paymentNote,
+.shippingNote {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.shippingNote {
+  margin-top: 8px;
+}
+
 .summary {
   padding: 32px;
   background: var(--color-section);

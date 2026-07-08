@@ -10,6 +10,8 @@ import Button from "../../components/Button/Button";
 import Footer from "../../components/footer/Footer";
 import styles from "./Checkout.module.css";
 
+const SHIPPING_CHARGE = 60;
+
 interface CheckoutFormState {
   firstName: string;
   lastName: string;
@@ -21,8 +23,6 @@ interface CheckoutFormState {
   state: string;
   postalCode: string;
   country: string;
-  shippingMethod: "Standard" | "Express";
-  paymentMethod: "COD" | "Razorpay";
 }
 
 const Checkout = () => {
@@ -40,8 +40,6 @@ const Checkout = () => {
     state: "",
     postalCode: "",
     country: "",
-    shippingMethod: "Standard",
-    paymentMethod: "COD",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,7 +65,7 @@ const Checkout = () => {
     void prefillForm();
   }, [user]);
 
-  const shippingCharge = form.shippingMethod === "Express" ? 199 : 0;
+  const shippingCharge = SHIPPING_CHARGE;
   const discount = 0;
   const tax = Math.round((totalPrice + shippingCharge - discount) * 0.05);
   const totalAmount = totalPrice + shippingCharge - discount + tax;
@@ -104,13 +102,13 @@ const Checkout = () => {
           state: form.state,
           postal_code: form.postalCode,
           country: form.country,
-          shipping_method: form.shippingMethod,
+          shipping_method: "Standard",
           shipping_charge: shippingCharge,
           subtotal: totalPrice,
           discount,
           tax,
           total_amount: totalAmount,
-          payment_method: form.paymentMethod,
+          payment_method: "Razorpay",
         },
         items
       );
@@ -238,56 +236,14 @@ const Checkout = () => {
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <CreditCard size={20} />
-                <h2>Payment Method</h2>
+                <h2>Payment</h2>
               </div>
-              <div className={styles.paymentOptions}>
-                <label className={styles.paymentOption}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="COD"
-                    checked={form.paymentMethod === "COD"}
-                    onChange={handleChange}
-                  />
-                  Cash on Delivery
-                </label>
-                <label className={styles.paymentOption}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="Razorpay"
-                    checked={form.paymentMethod === "Razorpay"}
-                    onChange={handleChange}
-                  />
-                  Razorpay
-                </label>
-              </div>
-
-              <div className={styles.sectionHeader} style={{ marginTop: 24 }}>
-                <h2>Shipping Method</h2>
-              </div>
-              <div className={styles.paymentOptions}>
-                <label className={styles.paymentOption}>
-                  <input
-                    type="radio"
-                    name="shippingMethod"
-                    value="Standard"
-                    checked={form.shippingMethod === "Standard"}
-                    onChange={handleChange}
-                  />
-                  Standard Shipping (Free)
-                </label>
-                <label className={styles.paymentOption}>
-                  <input
-                    type="radio"
-                    name="shippingMethod"
-                    value="Express"
-                    checked={form.shippingMethod === "Express"}
-                    onChange={handleChange}
-                  />
-                  Express Shipping (₹199)
-                </label>
-              </div>
+              <p className={styles.paymentNote}>
+                Pay securely online with Razorpay.
+              </p>
+              <p className={styles.shippingNote}>
+                Standard shipping: {formatPrice(SHIPPING_CHARGE)}
+              </p>
             </section>
           </div>
 
@@ -322,7 +278,7 @@ const Checkout = () => {
             </div>
             <div className={styles.summaryRow}>
               <span>Shipping</span>
-              <span>{shippingCharge === 0 ? "Free" : formatPrice(shippingCharge)}</span>
+              <span>{formatPrice(shippingCharge)}</span>
             </div>
             <div className={styles.summaryRow}>
               <span>Tax</span>
