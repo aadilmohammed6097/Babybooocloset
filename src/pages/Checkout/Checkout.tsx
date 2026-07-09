@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link,  } from "react-router-dom";
 import { CreditCard, Truck } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -27,8 +27,8 @@ interface CheckoutFormState {
 }
 
 const Checkout = () => {
-  const navigate = useNavigate();
-  const { items, totalPrice, clearCart } = useCart();
+  // const navigate = useNavigate();
+  const { items, totalPrice,  } = useCart();
   const { user } = useAuth();
   const [form, setForm] = useState<CheckoutFormState>({
     firstName: "",
