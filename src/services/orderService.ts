@@ -1,5 +1,4 @@
 import { supabase } from "../lib/supabase";
-import { generateOrderNumber } from "../utils/orderNumber";
 import type {
   CartItem,
   OrderInput,
@@ -20,18 +19,16 @@ export interface CreatedOrder {
 export const createOrder = async (
   order: OrderInput
 ): Promise<CreatedOrder> => {
-  const orderNumber = generateOrderNumber();
   const payload = {
     ...order,
-    order_number: orderNumber,
-    payment_status: "Pending",
+    payment_status: order.payment_status ?? "Pending",
     order_status: "Pending",
   };
 
   const { data, error } = await supabase
     .from("orders")
     .insert(payload)
-    .select("id, order_number")
+    .select("id, order_number, payment_status")
     .single();
 
   if (error || !data) {

@@ -5,7 +5,8 @@ import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { getProfile } from "../../services/customerProfileService";
 import { formatPrice } from "../../utils/formatPrice";
-import { placeOrder } from "../../services/orderService";
+import { generateOrderNumber } from "../../utils/orderNumber";
+import { startPayment } from "../../services/paymentService";
 import Button from "../../components/Button/Button";
 import Footer from "../../components/footer/Footer";
 import styles from "./Checkout.module.css";
@@ -79,45 +80,38 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+  
     setError("");
-
+  
     if (items.length === 0) {
       setError("Your cart is empty.");
       return;
     }
-
+  
+    const orderNumber = generateOrderNumber();
+  
     setLoading(true);
-
+  
     try {
-      const createdOrder = await placeOrder(
-        {
-          user_id: user?.id ?? null,
-          email: form.email,
-          phone: form.phone,
-          first_name: form.firstName,
-          last_name: form.lastName,
-          address_line1: form.addressLine1,
-          address_line2: form.addressLine2,
-          city: form.city,
-          state: form.state,
-          postal_code: form.postalCode,
-          country: form.country,
-          shipping_method: "Standard",
-          shipping_charge: shippingCharge,
-          subtotal: totalPrice,
-          discount,
-          tax,
-          total_amount: totalAmount,
-          payment_method: "Razorpay",
-        },
-        items
+      const razorpayOrder = await startPayment(
+        totalAmount,
+        orderNumber
       );
-
-      clearCart();
-      localStorage.setItem("customerEmail", form.email);
-      navigate(`/checkout/success?orderNumber=${createdOrder.order_number}`);
+  
+      console.log("Razorpay Order");
+  
+      console.log(razorpayOrder);
+  
+      // Stop here for now.
+      // Next step will open Razorpay Checkout.
+  
+      return;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to place order.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to initialize payment."
+      );
     } finally {
       setLoading(false);
     }

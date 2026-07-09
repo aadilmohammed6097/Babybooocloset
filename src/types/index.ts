@@ -151,6 +151,11 @@ export interface OrderInput {
   tax: number;
   total_amount: number;
   payment_method: PaymentMethod;
+  payment_status?: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+  order_number: string;
 }
 
 export interface OrderItemInput {
