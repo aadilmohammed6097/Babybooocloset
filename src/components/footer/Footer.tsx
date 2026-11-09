@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Globe, Share2, Heart } from "lucide-react";
 import { categories } from "../../services/mockData";
-import Newsletter from "../Newsletter/Newsletter";
 import styles from "./Footer.module.css";
 
 const Footer = () => {
@@ -70,8 +69,6 @@ const Footer = () => {
           </div>
         </div>
       </div>
-
-      <Newsletter />
 
       <div className={styles.copyright}>
         <div className={styles.container}>

@@ -9,6 +9,8 @@ import { useAuth } from "../../context/AuthContext";
 import Button from "../Button/Button";
 import styles from "./ProductCard.module.css";
 
+const LOW_STOCK_THRESHOLD = 5;
+
 interface ProductCardProps {
   product: Product;
 }
@@ -20,6 +22,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const { user } = useAuth();
   const wishlisted = isWishlisted(product.id);
   const [added, setAdded] = useState(false);
+  const stock = product.stock ?? 0;
+  const isLowStock = stock > 0 && stock <= LOW_STOCK_THRESHOLD;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,12 +52,17 @@ const ProductCard = ({ product }: ProductCardProps) => {
             loading="lazy"
           />
           {product.isNew && <span className={styles.badge}>New</span>}
+          {isLowStock && (
+            <span className={styles.lowStockBadge}>
+              Only {stock} left — Hurry!
+            </span>
+          )}
           <button
             className={`${styles.wishlist} ${wishlisted ? styles.wishlisted : ""}`}
             onClick={handleWishlist}
             aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
           >
-            <Heart size={18} fill={wishlisted ? "currentColor" : "none"} />
+            <Heart size={14} fill={wishlisted ? "currentColor" : "none"} />
           </button>
         </div>
       </Link>
@@ -70,7 +79,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           onClick={handleAddToCart}
           className={styles.addButton}
         >
-          <ShoppingBag size={16} />
+          <ShoppingBag size={14} />
           {added ? "Added!" : "Add to Cart"}
         </Button>
       </div>

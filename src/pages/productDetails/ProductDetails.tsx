@@ -17,6 +17,8 @@ import Loader from "../../components/Loader/Loader";
 import Footer from "../../components/footer/Footer";
 import styles from "./ProductDetails.module.css";
 
+const LOW_STOCK_THRESHOLD = 5;
+
 const ProductDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -74,6 +76,8 @@ const ProductDetails = () => {
       : [product.image];
 
   const wishlisted = isWishlisted(product.id);
+  const stock = product.stock ?? 0;
+  const isLowStock = stock > 0 && stock <= LOW_STOCK_THRESHOLD;
 
   const handleAddToCart = () => {
     const size = selectedSize || product.sizes[0];
@@ -109,6 +113,12 @@ const ProductDetails = () => {
             <p className={styles.price}>
               {formatPrice(product.price)}
             </p>
+
+            {isLowStock && (
+              <p className={styles.lowStockTag}>
+                Only {stock} piece{stock === 1 ? "" : "s"} left — Hurry up!
+              </p>
+            )}
 
             <p className={styles.description}>
               {product.description}

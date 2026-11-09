@@ -3,11 +3,5 @@
 }
 
 .mainWithCartBar {
-  padding-bottom: 88px;
-}
-
-@media (min-width: 993px) {
-  .mainWithCartBar {
-    padding-bottom: 0;
-  }
+  padding-bottom: 0;
 }

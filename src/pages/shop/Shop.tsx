@@ -1,17 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import { getProducts } from "../../services/productService";
 import { getCategories } from "../../services/categoryService";
 import { getSubcategories } from "../../services/subcategoryService";
 import type { AgeGroup, Category, Product, Subcategory } from "../../types";
 import ProductCard from "../../components/ProductCard/productCard";
 import Loader from "../../components/Loader/Loader";
-import Footer from "../../components/footer/Footer";
 import DropdownField from "../../components/FormFields/DropdownField";
 import SearchField from "../../components/FormFields/SearchField";
 import styles from "./Shop.module.css";
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 12;
 
 const ageGroups: { label: string; value: AgeGroup }[] = [
   { label: "0–3 months", value: "0-3m" },
@@ -60,6 +60,8 @@ const Shop = () => {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mobileSortOpen, setMobileSortOpen] = useState(false);
+  const mobileSortRef = useRef<HTMLDivElement | null>(null);
 
   const categoryFilter = searchParams.get("category");
   const subcategoryFilter = searchParams.get("subcategory");
@@ -106,6 +108,30 @@ const Shop = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [categoryFilter, subcategoryFilter, ageFilter, sort]);
+
+  useEffect(() => {
+    if (!mobileSortOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!mobileSortRef.current?.contains(event.target as Node)) {
+        setMobileSortOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileSortOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [mobileSortOpen]);
 
   const activeCategory = categories.find(
     (category) => category.slug === categoryFilter || category.id === categoryFilter
@@ -175,14 +201,32 @@ const Shop = () => {
     updateFilter("sort", value === "default" ? null : value);
   };
 
+  const categoryOptions = [
+    { label: "All Categories", value: "" },
+    ...categories.map((cat) => ({ label: cat.title, value: cat.slug })),
+  ];
+
+  const subcategoryOptions = [
+    { label: "All Subcategories", value: "" },
+    ...visibleSubcategories.map((subcategory) => ({
+      label: subcategory.title,
+      value: subcategory.slug,
+    })),
+  ];
+
+  const ageOptions = [
+    { label: "All Ages", value: "" },
+    ...ageGroups.map((age) => ({ label: age.label, value: age.value })),
+  ];
+
   if (loading) {
     return <Loader />;
   }
 
   return (
-    <>
-      <div className={styles.page}>
-        <div className={styles.container}>
+    <div className={styles.page}>
+      <div className={styles.container}>
+        <div className={styles.fixedTop}>
           <h1 className={styles.title}>Shop</h1>
 
           {error && <p className={styles.empty}>{error}</p>}
@@ -196,92 +240,141 @@ const Shop = () => {
             placeholder="Search products..."
             className={styles.searchBar}
           />
+        </div>
 
-          <div className={styles.layout}>
-            <aside className={styles.filters}>
+        <div className={styles.layout}>
+          <aside className={styles.filters}>
+            <div className={styles.filterGroup}>
+              <h3 className={styles.filterTitle}>Category</h3>
+              <button
+                type="button"
+                className={`${styles.filterOption} ${!categoryFilter ? styles.activeFilter : ""}`}
+                onClick={() => handleCategoryFilter(null)}
+              >
+                All
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`${styles.filterOption} ${isCategoryActive(cat, categoryFilter) ? styles.activeFilter : ""}`}
+                  onClick={() => handleCategoryFilter(cat.slug)}
+                >
+                  {cat.title}
+                </button>
+              ))}
+            </div>
+
+            {visibleSubcategories.length > 0 && (
               <div className={styles.filterGroup}>
-                <h3 className={styles.filterTitle}>Category</h3>
+                <h3 className={styles.filterTitle}>Subcategory</h3>
                 <button
                   type="button"
-                  className={`${styles.filterOption} ${!categoryFilter ? styles.activeFilter : ""}`}
-                  onClick={() => handleCategoryFilter(null)}
+                  className={`${styles.filterOption} ${!subcategoryFilter ? styles.activeFilter : ""}`}
+                  onClick={() => updateFilter("subcategory", null)}
                 >
                   All
                 </button>
-                {categories.map((cat) => (
+                {visibleSubcategories.map((subcategory) => (
                   <button
-                    key={cat.id}
+                    key={subcategory.id}
                     type="button"
-                    className={`${styles.filterOption} ${isCategoryActive(cat, categoryFilter) ? styles.activeFilter : ""}`}
-                    onClick={() => handleCategoryFilter(cat.slug)}
+                    className={`${styles.filterOption} ${isSubcategoryActive(subcategory, subcategoryFilter) ? styles.activeFilter : ""}`}
+                    onClick={() => updateFilter("subcategory", subcategory.slug)}
                   >
-                    {cat.title}
+                    {subcategory.title}
                   </button>
                 ))}
               </div>
+            )}
 
-              {visibleSubcategories.length > 0 && (
-                <div className={styles.filterGroup}>
-                  <h3 className={styles.filterTitle}>Subcategory</h3>
-                  <button
-                    type="button"
-                    className={`${styles.filterOption} ${!subcategoryFilter ? styles.activeFilter : ""}`}
-                    onClick={() => updateFilter("subcategory", null)}
-                  >
-                    All
-                  </button>
-                  {visibleSubcategories.map((subcategory) => (
-                    <button
-                      key={subcategory.id}
-                      type="button"
-                      className={`${styles.filterOption} ${isSubcategoryActive(subcategory, subcategoryFilter) ? styles.activeFilter : ""}`}
-                      onClick={() => updateFilter("subcategory", subcategory.slug)}
-                    >
-                      {subcategory.title}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className={styles.filterGroup}>
+              <h3 className={styles.filterTitle}>Age</h3>
+              <button
+                type="button"
+                className={`${styles.filterOption} ${!ageFilter ? styles.activeFilter : ""}`}
+                onClick={() => updateFilter("age", null)}
+              >
+                All Ages
+              </button>
+              {ageGroups.map((age) => (
+                <button
+                  key={age.value}
+                  type="button"
+                  className={`${styles.filterOption} ${ageFilter === age.value ? styles.activeFilter : ""}`}
+                  onClick={() => updateFilter("age", age.value)}
+                >
+                  {age.label}
+                </button>
+              ))}
+            </div>
+          </aside>
 
-              <div className={styles.filterGroup}>
-                <h3 className={styles.filterTitle}>Age</h3>
+          <div className={styles.content}>
+            <div className={styles.contentHeader}>
+              <p className={styles.resultCount}>
+                {filteredProducts.length} product
+                {filteredProducts.length !== 1 ? "s" : ""}
+              </p>
+              <DropdownField
+                label="Sort by"
+                labelPosition="inline"
+                value={sort}
+                options={[...sortOptions]}
+                onChange={handleSortChange}
+                minWidth={210}
+                className={styles.desktopSort}
+              />
+              <div className={styles.mobileSort} ref={mobileSortRef}>
                 <button
                   type="button"
-                  className={`${styles.filterOption} ${!ageFilter ? styles.activeFilter : ""}`}
-                  onClick={() => updateFilter("age", null)}
+                  className={`${styles.mobileSortBtn} ${mobileSortOpen ? styles.mobileSortBtnOpen : ""}`}
+                  onClick={() => setMobileSortOpen((open) => !open)}
+                  aria-haspopup="dialog"
+                  aria-expanded={mobileSortOpen}
                 >
-                  All Ages
+                  <span>Sort by</span>
+                  <ChevronDown
+                    size={16}
+                    className={`${styles.mobileSortChevron} ${mobileSortOpen ? styles.mobileSortChevronOpen : ""}`}
+                  />
                 </button>
-                {ageGroups.map((age) => (
-                  <button
-                    key={age.value}
-                    type="button"
-                    className={`${styles.filterOption} ${ageFilter === age.value ? styles.activeFilter : ""}`}
-                    onClick={() => updateFilter("age", age.value)}
-                  >
-                    {age.label}
-                  </button>
-                ))}
+                {mobileSortOpen && (
+                  <div className={styles.mobileSortPanel} role="dialog" aria-label="Sort and filter">
+                    <DropdownField
+                      label="Category"
+                      value={categoryFilter ?? ""}
+                      options={categoryOptions}
+                      onChange={(value) => handleCategoryFilter(value || null)}
+                    />
+                    {visibleSubcategories.length > 0 && (
+                      <DropdownField
+                        label="Subcategory"
+                        value={subcategoryFilter ?? ""}
+                        options={subcategoryOptions}
+                        onChange={(value) =>
+                          updateFilter("subcategory", value || null)
+                        }
+                      />
+                    )}
+                    <DropdownField
+                      label="Age"
+                      value={ageFilter ?? ""}
+                      options={ageOptions}
+                      onChange={(value) => updateFilter("age", value || null)}
+                    />
+                    <DropdownField
+                      label="Sort by"
+                      value={sort}
+                      options={[...sortOptions]}
+                      onChange={handleSortChange}
+                    />
+                  </div>
+                )}
               </div>
+            </div>
 
-            </aside>
-
-            <div className={styles.content}>
-              <div className={styles.contentHeader}>
-                <p className={styles.resultCount}>
-                  {filteredProducts.length} product
-                  {filteredProducts.length !== 1 ? "s" : ""}
-                </p>
-                <DropdownField
-                  label="Sort by"
-                  labelPosition="inline"
-                  value={sort}
-                  options={[...sortOptions]}
-                  onChange={handleSortChange}
-                  minWidth={210}
-                />
-              </div>
-
+            <div className={styles.productsScroll}>
               {paginatedProducts.length > 0 ? (
                 <div className={styles.grid}>
                   {paginatedProducts.map((product) => (
@@ -328,8 +421,7 @@ const Shop = () => {
           </div>
         </div>
       </div>
-      <Footer />
-    </>
+    </div>
   );
 };
 

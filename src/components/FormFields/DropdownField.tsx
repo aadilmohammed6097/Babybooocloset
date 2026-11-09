@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import styles from "./DropdownField.module.css";
 
@@ -16,6 +16,8 @@ type DropdownFieldProps = {
   onChange: (value: string) => void;
   className?: string;
   minWidth?: number | string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 };
 
 const DropdownField = ({
@@ -27,15 +29,36 @@ const DropdownField = ({
   onChange,
   className = "",
   minWidth,
+  searchable = false,
+  searchPlaceholder = "Search...",
 }: DropdownFieldProps) => {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedLabel =
-    options.find((option) => option.value === value)?.label ?? options[0]?.label ?? "";
+    options.find((option) => option.value === value)?.label ??
+    options[0]?.label ??
+    "";
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options;
+    const query = search.trim().toLowerCase();
+    return options.filter((option) =>
+      option.label.toLowerCase().includes(query)
+    );
+  }, [options, search, searchable]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSearch("");
+      return;
+    }
+
+    if (searchable) {
+      window.setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
 
     const handleClickOutside = (event: MouseEvent) => {
       if (!dropdownRef.current?.contains(event.target as Node)) {
@@ -56,7 +79,7 @@ const DropdownField = ({
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [open]);
+  }, [open, searchable]);
 
   const handleSelect = (nextValue: string) => {
     onChange(nextValue);
@@ -86,18 +109,39 @@ const DropdownField = ({
       </button>
       {open && (
         <div className={styles.menu} role="listbox">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={value === option.value}
-              className={`${styles.option} ${value === option.value ? styles.optionActive : ""}`}
-              onClick={() => handleSelect(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
+          {searchable && (
+            <div className={styles.searchWrap}>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={searchPlaceholder}
+                className={styles.searchInput}
+                aria-label={searchPlaceholder}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              />
+            </div>
+          )}
+          <div className={styles.optionsList}>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.value || option.label}
+                  type="button"
+                  role="option"
+                  aria-selected={value === option.value}
+                  className={`${styles.option} ${value === option.value ? styles.optionActive : ""}`}
+                  onClick={() => handleSelect(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))
+            ) : (
+              <p className={styles.noResults}>No results found</p>
+            )}
+          </div>
         </div>
       )}
     </div>
